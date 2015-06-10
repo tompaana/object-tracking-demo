@@ -84,12 +84,194 @@ HRESULT CBufferEffect::SetProperties(ABI::Windows::Foundation::Collections::IPro
 }
 
 
+#if (WINAPI_FAMILY == WINAPI_FAMILY_PC_APP)
+
+//-------------------------------------------------------------------
+// ProcessOutput
+// Process an output sample.
+//-------------------------------------------------------------------
+
+HRESULT CBufferEffect::ProcessOutput(
+	DWORD                   dwFlags,
+	DWORD                   cOutputBufferCount,
+	MFT_OUTPUT_DATA_BUFFER  *pOutputSamples, // one per stream
+	DWORD                   *pdwStatus
+	)
+{
+	// Check input parameters...
+
+	// This MFT does not accept any flags for the dwFlags parameter.
+
+	// The only defined flag is MFT_PROCESS_OUTPUT_DISCARD_WHEN_NO_BUFFER. This flag 
+	// applies only when the MFT marks an output stream as lazy or optional. But this
+	// MFT has no lazy or optional streams, so the flag is not valid.
+
+	if (dwFlags != 0)
+	{
+		return E_INVALIDARG;
+	}
+
+	if (pOutputSamples == NULL || pdwStatus == NULL)
+	{
+		return E_POINTER;
+	}
+
+	// There must be exactly one output buffer.
+	if (cOutputBufferCount != 1)
+	{
+		return E_INVALIDARG;
+	}
+
+	// It must contain a sample.
+	if (pOutputSamples[0].pSample == NULL)
+	{
+		return E_INVALIDARG;
+	}
+
+	HRESULT hr = S_OK;
+
+	IMFMediaBuffer *pInput = NULL;
+	IMFMediaBuffer *pOutput = NULL;
+
+	EnterCriticalSection(&m_critSec);
+
+	// There must be an input sample available for processing.
+	if (m_pSample == NULL)
+	{
+		hr = MF_E_TRANSFORM_NEED_MORE_INPUT;
+		goto done;
+	}
+
+	// Initialize streaming.
+
+	hr = BeginStreaming();
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	// Get the input buffer.
+	hr = m_pSample->ConvertToContiguousBuffer(&pInput);
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	// Get the output buffer.
+	hr = pOutputSamples[0].pSample->ConvertToContiguousBuffer(&pOutput);
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	hr = OnProcessOutput(pInput, pOutput);
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	// Set status flags.
+	pOutputSamples[0].dwStatus = 0;
+	*pdwStatus = 0;
+
+
+	// Copy the duration and time stamp from the input sample, if present.
+
+	LONGLONG hnsDuration = 0;
+	LONGLONG hnsTime = 0;
+
+	if (SUCCEEDED(m_pSample->GetSampleDuration(&hnsDuration)))
+	{
+		hr = pOutputSamples[0].pSample->SetSampleDuration(hnsDuration);
+		if (FAILED(hr))
+		{
+			goto done;
+		}
+	}
+
+	if (SUCCEEDED(m_pSample->GetSampleTime(&hnsTime)))
+	{
+		hr = pOutputSamples[0].pSample->SetSampleTime(hnsTime);
+	}
+
+done:
+	SafeRelease(&m_pSample);   // Release our input sample.
+	SafeRelease(&pInput);
+	SafeRelease(&pOutput);
+	LeaveCriticalSection(&m_critSec);
+	return hr;
+}
+
+#endif // WINAPI_FAMILY_PC_APP
+
+
 // Generate output data.
 
 HRESULT CBufferEffect::OnProcessOutput(IMFMediaBuffer *pIn, IMFMediaBuffer *pOut)
 {
+#if (WINAPI_FAMILY == WINAPI_FAMILY_PC_APP)
+	BYTE *pDest = NULL;         // Destination buffer.
+	LONG lDestStride = 0;       // Destination stride.
+
+	BYTE *pSrc = NULL;          // Source buffer.
+	LONG lSrcStride = 0;        // Source stride.
+
+								// Helper objects to lock the buffers.
+	VideoBufferLock inputLock(pIn);
+	VideoBufferLock outputLock(pOut);
+
+	// Stride if the buffer does not support IMF2DBuffer
+	LONG lDefaultStride = 0;
+
+	HRESULT hr = m_imageProcessingUtils->getDefaultStride(m_pInputType, &lDefaultStride);
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	// Lock the input buffer.
+	hr = inputLock.LockBuffer(lDefaultStride, m_imageHeightInPixels, &pSrc, &lSrcStride);
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	// Lock the output buffer.
+	hr = outputLock.LockBuffer(lDefaultStride, m_imageHeightInPixels, &pDest, &lDestStride);
+	if (FAILED(hr))
+	{
+		goto done;
+	}
+
+	// Invoke the image transform function.
+	assert(m_pTransformFn != NULL);
+	if (m_pTransformFn)
+	{
+		ObjectDetails objectDetails;
+
+		(*m_pTransformFn)(objectDetails, m_settings->m_targetYUV, static_cast<BYTE>(m_settings->m_threshold), NULL,
+						  m_rcDest, pDest, lDestStride, pSrc, lSrcStride,
+						  m_imageWidthInPixels, m_imageHeightInPixels);
+	}
+	else
+	{
+		hr = E_UNEXPECTED;
+		goto done;
+	}
+
+
+	// Set the data size on the output buffer.
+	hr = pOut->SetCurrentLength(m_cbImageSize);
+
+	// The VideoBufferLock class automatically unlocks the buffers.
+done:
+	return hr;
+#else // WINAPI_FAMILY_PC_APP
 	return -1;
+#endif // WINAPI_FAMILY_PC_APP
 }
+
+
 
 
 //-------------------------------------------------------------------
@@ -151,6 +333,29 @@ HRESULT CBufferEffect::ProcessInput(
         }
 	}
 
+#if (WINAPI_FAMILY == WINAPI_FAMILY_PC_APP)
+	if (m_messenger->State() == VideoEffectState::Idle)
+	{
+		// Initialize streaming.
+		hr = BeginStreaming();
+
+		if (FAILED(hr))
+		{
+			goto done;
+		}
+
+		// Check if an input sample is already queued.
+		if (m_pSample != NULL)
+		{
+			hr = MF_E_NOTACCEPTING;   // We already have an input sample.
+			goto done;
+		}
+
+		m_pSample = pSample;
+		pSample->AddRef();  // Hold a reference count on the sample.
+	}
+#endif // WINAPI_FAMILY_PC_APP
+
 	if (m_messenger->State() == VideoEffectState::Triggered)
 	{
         m_numberOfFramesBufferedAfterTriggered++;
@@ -193,16 +398,30 @@ HRESULT CBufferEffect::ProcessInput(
             bool lastFrameIsLeft = objectDetailsFromLastFrame._centerX < objectDetailsCloseToTriggeredFrame._centerX;
             UINT32 joinX = (objectDetailsFromLastFrame._centerX + objectDetailsCloseToTriggeredFrame._centerX) / 2;
 
-            BYTE *mergedFrame = ImageProcessingUtils::mergeFramesNV12(
-                (lastFrameIsLeft ? lastFrame : triggeredFrame),
-                (lastFrameIsLeft ? triggeredFrame : lastFrame),
-                m_imageWidthInPixels, m_imageHeightInPixels, joinX);
+			BYTE *mergedFrame = NULL;
 
-            NotifyPostProcessComplete(
-                mergedFrame, FrameSizeAsUint32(),
-                objectDetailsCloseToTriggeredFrame, objectDetailsFromLastFrame);
+			if (m_pTransformFn == ChromaFilterTransformImageNV12)
+			{
+				mergedFrame = ImageProcessingUtils::mergeFramesNV12(
+							  (lastFrameIsLeft ? lastFrame : triggeredFrame),
+							  (lastFrameIsLeft ? triggeredFrame : lastFrame),
+							  m_imageWidthInPixels, m_imageHeightInPixels, joinX);
+			}
+			else if (m_pTransformFn == ChromaFilterTransformImageYUY2)
+			{
+				mergedFrame = ImageProcessingUtils::mergeFramesYUY2(
+							  (lastFrameIsLeft ? lastFrame : triggeredFrame),
+							  (lastFrameIsLeft ? triggeredFrame : lastFrame),
+							  m_imageWidthInPixels, m_imageHeightInPixels, joinX);
+			}
 
-            delete[] mergedFrame;
+			if (mergedFrame)
+			{
+				NotifyPostProcessComplete(mergedFrame, FrameSizeAsUint32(),
+										  objectDetailsCloseToTriggeredFrame, objectDetailsFromLastFrame);
+
+				delete[] mergedFrame;
+			}
 		}
 
         ClearFrameRingBuffer();
@@ -260,6 +479,10 @@ inline const UINT32 CBufferEffect::FrameSizeAsUint32() const
         // UV plane: width * height / 2
         coefficient = 1.5f;
     }
+	else if (m_pTransformFn == ChromaFilterTransformImageYUY2)
+	{
+		coefficient = 2.0f;
+	}
 
     return (UINT32)(m_imageWidthInPixels * m_imageHeightInPixels * coefficient);
 }

@@ -829,6 +829,47 @@ BYTE* ImageProcessingUtils::mergeFramesNV12(
 
 
 //------------------------------------------------------------------
+// mergeFramesYUY2
+//
+// Merges the two given frame into one at the given X coordinate.
+//------------------------------------------------------------------
+BYTE* ImageProcessingUtils::mergeFramesYUY2(
+	BYTE* leftFrame, BYTE* rightFrame, const UINT32& frameWidth, const UINT32& frameHeight, UINT32& joinX)
+{
+	if (joinX % 2 != 0)
+	{
+		joinX++;
+	}
+
+	if (joinX == 0 || joinX >= frameWidth)
+	{
+		return NULL;
+	}
+
+	const UINT32 frameSizeYUY2 = (frameWidth * frameHeight) << 1;
+	BYTE* mergedFrame = (BYTE*)malloc(frameSizeYUY2 * sizeof(BYTE));
+	BYTE* mergedFrameBegin = mergedFrame;
+	const UINT32 leftSideLength = joinX << 1;
+	const UINT32 rightSideLength = (frameWidth - joinX) << 1;
+	const UINT32 scanWidth = frameWidth << 1;
+
+	for (UINT32 i = 0; i < frameSizeYUY2; i += scanWidth)
+	{
+		CopyMemory(mergedFrame, leftFrame, leftSideLength);
+		mergedFrame += leftSideLength;
+		leftFrame += scanWidth;
+		rightFrame += leftSideLength;
+
+		CopyMemory(mergedFrame, rightFrame, rightSideLength);
+		mergedFrame += rightSideLength;
+		rightFrame += rightSideLength;
+	}
+
+	return mergedFrameBegin;
+}
+
+
+//------------------------------------------------------------------
 // createObjectMap
 //
 //
