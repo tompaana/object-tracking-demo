@@ -1,4 +1,4 @@
-# Object tracking sample #
+# Object Tracking Demo #
 
 ## Description ##
 
@@ -22,7 +22,7 @@ However, I'm *sorry*, but:
    long way to go so that we could say it even functions on 50 % capacity.
    That said, it still provides some rudimentary architecture, which makes
    sense and you are free to utilize that should you want to implement something
-   similar. It provides a set of different, reusable methods, for image
+   similar. It provides a set of different, reusable methods for image
    processing and analysis. And every bit is yours to keep - unless you're
    planning some evil scheme of world domination or something.
 
