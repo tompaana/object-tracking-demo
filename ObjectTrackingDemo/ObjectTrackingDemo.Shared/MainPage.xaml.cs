@@ -439,6 +439,8 @@ namespace ObjectTrackingDemo
                         SetRectangleSizeAndPositionBasedOnObjectDetails(
                             ref secondRectangle, ref secondRectangleTranslateTransform,
                             toObjectDetails, imageActualHeight);
+
+                        processingResultImage.Stretch = Stretch.None;
 #endif // WINDOWS_PHONE_APP
                     }
 
