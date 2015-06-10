@@ -1,0 +1,78 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ObjectTrackingDemo", "ObjectTrackingDemo", "{5CA8E6FE-FD1F-4726-B579-D8A98CC730CC}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "ObjectTrackingDemo.Shared", "ObjectTrackingDemo\ObjectTrackingDemo.Shared\ObjectTrackingDemo.Shared.shproj", "{33843CE2-907A-4F92-84A7-21CEF6883C88}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectTrackingDemo.Windows", "ObjectTrackingDemo\ObjectTrackingDemo.Windows\ObjectTrackingDemo.Windows.csproj", "{6E138755-D174-401B-B039-FD44DB98257A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectTrackingDemo.WindowsPhone", "ObjectTrackingDemo\ObjectTrackingDemo.WindowsPhone\ObjectTrackingDemo.WindowsPhone.csproj", "{AE10D24C-A013-455D-8FD9-137B329287DF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VideoEffect", "VideoEffect", "{8EBAEECA-D042-44E2-8B17-6C079010A5C9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VideoEffect.Shared", "VideoEffect\VideoEffect.Shared\VideoEffect.Shared.vcxitems", "{B3409048-FA92-4199-BB39-19EDDC4F9ABE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VideoEffect.Windows", "VideoEffect\VideoEffect.Windows\VideoEffect.Windows.vcxproj", "{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VideoEffect.WindowsPhone", "VideoEffect\VideoEffect.WindowsPhone\VideoEffect.WindowsPhone.vcxproj", "{4349460B-C9DB-467F-8BE8-8C64243818F6}"
+EndProject
+Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		ObjectTrackingDemo\ObjectTrackingDemo.Shared\ObjectTrackingDemo.Shared.projitems*{33843ce2-907a-4f92-84a7-21cef6883c88}*SharedItemsImports = 13
+		VideoEffect\VideoEffect.Shared\VideoEffect.Shared.vcxitems*{4349460b-c9db-467f-8be8-8c64243818f6}*SharedItemsImports = 4
+		ObjectTrackingDemo\ObjectTrackingDemo.Shared\ObjectTrackingDemo.Shared.projitems*{ae10d24c-a013-455d-8fd9-137b329287df}*SharedItemsImports = 4
+		ObjectTrackingDemo\ObjectTrackingDemo.Shared\ObjectTrackingDemo.Shared.projitems*{6e138755-d174-401b-b039-fd44db98257a}*SharedItemsImports = 4
+		VideoEffect\VideoEffect.Shared\VideoEffect.Shared.vcxitems*{b3409048-fa92-4199-bb39-19eddc4f9abe}*SharedItemsImports = 9
+		VideoEffect\VideoEffect.Shared\VideoEffect.Shared.vcxitems*{52d0d982-6a36-4fba-bcef-550acc85dc8a}*SharedItemsImports = 4
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Debug|x86 = Debug|x86
+		Release|ARM = Release|ARM
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6E138755-D174-401B-B039-FD44DB98257A}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{6E138755-D174-401B-B039-FD44DB98257A}.Debug|x86.ActiveCfg = Debug|x86
+		{6E138755-D174-401B-B039-FD44DB98257A}.Debug|x86.Build.0 = Debug|x86
+		{6E138755-D174-401B-B039-FD44DB98257A}.Debug|x86.Deploy.0 = Debug|x86
+		{6E138755-D174-401B-B039-FD44DB98257A}.Release|ARM.ActiveCfg = Release|Any CPU
+		{6E138755-D174-401B-B039-FD44DB98257A}.Release|x86.ActiveCfg = Release|Any CPU
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Debug|ARM.ActiveCfg = Debug|ARM
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Debug|ARM.Build.0 = Debug|ARM
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Debug|ARM.Deploy.0 = Debug|ARM
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Release|ARM.ActiveCfg = Release|ARM
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Release|ARM.Build.0 = Release|ARM
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Release|ARM.Deploy.0 = Release|ARM
+		{AE10D24C-A013-455D-8FD9-137B329287DF}.Release|x86.ActiveCfg = Release|Any CPU
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Debug|ARM.ActiveCfg = Debug|ARM
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Debug|x86.ActiveCfg = Debug|Win32
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Debug|x86.Build.0 = Debug|Win32
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Release|ARM.ActiveCfg = Release|ARM
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Release|ARM.Build.0 = Release|ARM
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Release|x86.ActiveCfg = Release|Win32
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A}.Release|x86.Build.0 = Release|Win32
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Debug|ARM.ActiveCfg = Debug|ARM
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Debug|ARM.Build.0 = Debug|ARM
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Debug|x86.ActiveCfg = Debug|Win32
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Release|ARM.ActiveCfg = Release|ARM
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Release|ARM.Build.0 = Release|ARM
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Release|x86.ActiveCfg = Release|Win32
+		{4349460B-C9DB-467F-8BE8-8C64243818F6}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{33843CE2-907A-4F92-84A7-21CEF6883C88} = {5CA8E6FE-FD1F-4726-B579-D8A98CC730CC}
+		{6E138755-D174-401B-B039-FD44DB98257A} = {5CA8E6FE-FD1F-4726-B579-D8A98CC730CC}
+		{AE10D24C-A013-455D-8FD9-137B329287DF} = {5CA8E6FE-FD1F-4726-B579-D8A98CC730CC}
+		{B3409048-FA92-4199-BB39-19EDDC4F9ABE} = {8EBAEECA-D042-44E2-8B17-6C079010A5C9}
+		{52D0D982-6A36-4FBA-BCEF-550ACC85DC8A} = {8EBAEECA-D042-44E2-8B17-6C079010A5C9}
+		{4349460B-C9DB-467F-8BE8-8C64243818F6} = {8EBAEECA-D042-44E2-8B17-6C079010A5C9}
+	EndGlobalSection
+EndGlobal

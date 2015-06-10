@@ -1,0 +1,231 @@
+﻿<Page
+    x:Class="ObjectTrackingDemo.MainPage"
+    x:Name="thisPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ObjectTrackingDemo"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Name="LayoutGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        
+        <Canvas
+            x:Name="viewfinderCanvas"
+            Background="Gray"
+            Tapped="OnViewfinderCanvasTapped">
+            <CaptureElement
+                x:Name="captureElement"
+                Width="{Binding ActualWidth, ElementName=LayoutGrid}"
+                Height="{Binding ActualHeight, ElementName=LayoutGrid}" />
+        </Canvas>
+
+        <Rectangle
+            x:Name="lockedRectangle"
+            Width="100"
+            Height="100"                    
+            Stroke="LightGreen"
+            StrokeThickness="4"
+            Fill="Transparent"
+            Visibility="Collapsed">
+            <Rectangle.RenderTransform>
+                <TranslateTransform
+                    x:Name="lockedRectangleTranslateTransform"
+                    X="0"
+                    Y="0" />
+            </Rectangle.RenderTransform>
+        </Rectangle>
+        
+        <!-- Info text grid -->
+        <Grid
+            Margin="6,24"
+            Background="#aa000000"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Visibility="{Binding Path=ControlsVisibility, ElementName=thisPage}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock
+                x:Name="stateTextBlock"
+                Margin="12,12,12,6"
+                Style="{ThemeResource BodyTextBlockStyle}"
+                Foreground="White"
+                Text="Hello there!" />
+            <TextBlock
+                x:Name="infoTextBlock"
+                Grid.Row="1"
+                Margin="12,0,12,12"
+                Style="{ThemeResource BodyTextBlockStyle}"
+                Foreground="White"
+                Text="" />        
+        </Grid>
+
+        <!-- Small preview image of captured image -->
+        <Image
+            x:Name="capturedPhotoImage"
+            Width="200"
+            Margin="12,24"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Stretch="Uniform"
+            Source="Assets/WideLogo.scale-240.png"
+            Visibility="Collapsed" />
+        
+        <!-- Control bar -->
+        <local:ControlBar
+            x:Name="controlBar"
+            Margin="0,24"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Visibility="{Binding Path=ControlsVisibility, ElementName=thisPage}" />
+        
+        <Grid
+            Margin="24"
+            VerticalAlignment="Bottom"
+            Background="Transparent"
+            Visibility="{Binding Path=ControlsVisibility, ElementName=thisPage}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <Button
+                x:Name="colorPickerButton"
+                Grid.Column="0"
+                Width="50"
+                Height="50"
+                VerticalAlignment="Center"
+                Content=""
+                Click="OnColorPickerButtonClicked">
+                <Button.Background>
+                    <SolidColorBrush Color="{Binding CurrentColor, ElementName=colorPickerControl}" />
+                </Button.Background>
+            </Button>
+            <StackPanel
+                Grid.Column="1"
+                Margin="36,0"
+                VerticalAlignment="Center">
+                <TextBlock
+                    x:Name="thresholdTextBlock"
+                    Margin="0,24,0,0"
+                    Style="{ThemeResource BaseTextBlockStyle}"
+                    Foreground="White"
+                    Text="" />
+                <Slider
+                    x:Name="thresholdSlider"
+                    Margin="0,-12,0,0"
+                    Minimum="0"
+                    Maximum="128"
+                    ValueChanged="OnSliderValueChanged" />
+            </StackPanel>
+        </Grid>
+        
+        <local:ColorPickerControl
+            x:Name="colorPickerControl"
+            Grid.RowSpan="2"
+            Width="300"
+            HorizontalAlignment="Left"
+            Visibility="Collapsed" />
+        
+        <Grid
+            x:Name="processingResultGrid"
+            Background="#aa000000"
+            Visibility="Collapsed"
+            Tapped="OnProcessingResultGridTapped">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>            
+            <Grid
+                Margin="12"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="White">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid
+                    Margin="12"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Image
+                        x:Name="processingResultImage"
+                        Stretch="Uniform"
+                        Source="Assets/WideLogo.scale-240.png" />
+                   <TextBlock
+                        x:Name="imageLeftSideLabel"
+                        Margin="12,6,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Style="{ThemeResource SubheaderTextBlockStyle}"
+                        Foreground="White"
+                        Text="Left" />
+                    <TextBlock
+                        x:Name="imageRightSideLabel"
+                        Margin="0,6,12,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Style="{ThemeResource SubheaderTextBlockStyle}"
+                        Foreground="White"
+                        Text="Right" />                
+                    <Rectangle
+                        x:Name="firstRectangle"
+                        Width="100"
+                        Height="100"
+                        Stroke="LightGreen"
+                        StrokeThickness="4"
+                        Fill="Transparent">
+                        <Rectangle.RenderTransform>
+                            <TranslateTransform
+                                x:Name="firstRectangleTranslateTransform"
+                                X="0"
+                                Y="0" />
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                    <Rectangle
+                        x:Name="secondRectangle"
+                        Width="100"
+                        Height="100"                    
+                        Stroke="LightGreen"
+                        StrokeThickness="4"
+                        Fill="Transparent">
+                        <Rectangle.RenderTransform>
+                            <TranslateTransform
+                                x:Name="secondRectangleTranslateTransform"
+                                X="0"
+                                Y="0" />
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <ProgressBar
+            x:Name="progressBar"
+            Height="10"
+            Margin="6"
+            VerticalAlignment="Top"
+            IsIndeterminate="True"
+            Visibility="Collapsed" />
+    </Grid>
+</Page>
