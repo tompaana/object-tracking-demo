@@ -411,15 +411,6 @@ HRESULT CObjectFinderEffect::OnProcessOutput(IMFMediaBuffer *pIn, IMFMediaBuffer
                 ClearTargetLock();
             }
         }
-
-        // TODO: Temporary until YUV2 is fully supported
-        if (m_messenger->State() == VideoEffectState::Triggered
-            && m_pTransformFn == ChromaFilterTransformImageYUY2)
-        {
-            // Post processing is not currently supported for YUV2.
-            // Thus let's switch back to idle.
-            m_messenger->SetState(VideoEffectState::Idle);
-        }
     }
 
     // Set the data size on the output buffer.

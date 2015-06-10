@@ -69,6 +69,10 @@ public: // From CAbstractEffect
 	STDMETHODIMP SetProperties(ABI::Windows::Foundation::Collections::IPropertySet *pConfiguration);
     STDMETHODIMP ProcessInput(DWORD dwInputStreamID, IMFSample *pSample, DWORD dwFlags);
 
+#if (WINAPI_FAMILY == WINAPI_FAMILY_PC_APP)
+	STDMETHODIMP ProcessOutput(DWORD dwFlags, DWORD cOutputBufferCount, MFT_OUTPUT_DATA_BUFFER  *pOutputSamples, DWORD *pdwStatus);
+#endif // WINAPI_FAMILY_PC_APP
+
 protected: // From CAbstractEffect
     HRESULT OnProcessOutput(IMFMediaBuffer *pIn, IMFMediaBuffer *pOut);
 

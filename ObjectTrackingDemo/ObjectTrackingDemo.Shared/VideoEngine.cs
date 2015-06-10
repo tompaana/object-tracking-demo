@@ -16,15 +16,15 @@ namespace ObjectTrackingDemo
     public class VideoEngine
     {
         // Constants
-        private const string EffectActivationId = "ObjectFinderEffectTransform.ObjectFinderEffectEffect";
-        private const string BufferEffectActivationId = "BufferEffect.BufferEffect";
+        public const string EffectActivationId = "ObjectFinderEffectTransform.ObjectFinderEffectEffect";
+        public const string BufferEffectActivationId = "BufferEffect.BufferEffect";
         private const string PropertyKeyThreshold = "Threshold";
         private const string PropertyKeyY = "PropertyY";
         private const string PropertyKeyU = "PropertyU";
         private const string PropertyKeyV = "PropertyV";
         private const string propertyKeyCommunication = "Communication";
-        private readonly MediaStreamType PreviewMediaStreamType = MediaStreamType.VideoPreview;
-        private readonly MediaStreamType RecordMediaStreamType = MediaStreamType.VideoRecord;
+        public readonly MediaStreamType PreviewMediaStreamType = MediaStreamType.VideoPreview;
+        public readonly MediaStreamType RecordMediaStreamType = MediaStreamType.VideoRecord;
         private const uint PreviewFrameRate = 30;
         private const int MinimumThreshold = 0;
         private const int MaximumThreshold = 255;
@@ -40,10 +40,6 @@ namespace ObjectTrackingDemo
         private PropertySet _properties;
         private float[] _yuv;
         private bool _changingThreshold;
-
-#if WINDOWS_APP
-        private LowLagPhotoCapture _lowLagPhotoCapture;
-#endif
 
         private static VideoEngine _instance;
         public static VideoEngine Instance
@@ -196,6 +192,14 @@ namespace ObjectTrackingDemo
             private set;
         }
 
+        public PropertySet Properties
+        {
+            get
+            {
+                return _properties;
+            }
+        }
+
         private VideoEngine()
         {
             _yuv = new float[3]
@@ -288,10 +292,12 @@ namespace ObjectTrackingDemo
                 Initialized = true;
             }
 
-#if WINDOWS_PHONE_APP
             await MediaCapture.AddEffectAsync(RecordMediaStreamType, BufferEffectActivationId, _properties);
-            await MediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(ColorTemperaturePreset.Fluorescent);
-#endif // WINDOWS_PHONE_APP
+
+            if (MediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
+            {
+                await MediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(ColorTemperaturePreset.Fluorescent);
+            }
 
             return Initialized;
         }
@@ -332,7 +338,6 @@ namespace ObjectTrackingDemo
 #else // WINDOWS_PHONE_APP
                 MediaEncodingProfile recordProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
                 await MediaCapture.StartRecordToStreamAsync(recordProfile, _recordingStream);
-                _lowLagPhotoCapture = await MediaCapture.PrepareLowLagPhotoCaptureAsync(ImageEncodingProperties.CreateJpeg());
 #endif // WINDOWS_PHONE_APP
 
                 // Get camera's resolution
@@ -361,11 +366,7 @@ namespace ObjectTrackingDemo
         {
             if (Initialized && MediaCapture != null)
             {
-#if WINDOWS_APP
-                await _lowLagPhotoCapture.FinishAsync();
-#else
                 await MediaCapture.StopRecordAsync();
-#endif
                 await MediaCapture.StopPreviewAsync();
                 MediaCapture.Dispose();
                 MediaCapture = null;
@@ -375,18 +376,6 @@ namespace ObjectTrackingDemo
                 Initialized = false;
             }
         }
-
-#if WINDOWS_APP
-        public async Task<CapturedPhoto> CapturePhotoAsync()
-        {
-            if (Initialized)
-            {
-                return await _lowLagPhotoCapture.CaptureAsync();
-            }
-
-            return null;
-        }
-#endif
 
         public async Task<bool> ToggleEffectAsync()
         {

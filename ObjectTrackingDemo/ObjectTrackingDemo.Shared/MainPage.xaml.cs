@@ -100,11 +100,8 @@ namespace ObjectTrackingDemo
             colorPickerControl.ColorChanged += OnColorPickerControlColorChanged;
             _videoEngine.StateManager.StateChanged += OnEffectStateChangedAsync;
             _videoEngine.ShowMessageRequest += OnVideoEngineShowMessageRequestAsync;
-
-#if WINDOWS_PHONE_APP
             _videoEngine.Messenger.FrameCaptured += OnFrameCapturedAsync;
             _videoEngine.Messenger.PostProcessComplete += OnPostProcessCompleteAsync;
-#endif
 
             Window.Current.VisibilityChanged += OnVisibilityChangedAsync;
 
@@ -120,11 +117,8 @@ namespace ObjectTrackingDemo
             colorPickerControl.ColorChanged -= OnColorPickerControlColorChanged;
             _videoEngine.StateManager.StateChanged -= OnEffectStateChangedAsync;
             _videoEngine.ShowMessageRequest -= OnVideoEngineShowMessageRequestAsync;
-
-#if WINDOWS_PHONE_APP
             _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
             _videoEngine.Messenger.PostProcessComplete -= OnPostProcessCompleteAsync;
-#endif
 
             Window.Current.VisibilityChanged -= OnVisibilityChangedAsync;
 
@@ -266,10 +260,8 @@ namespace ObjectTrackingDemo
                 controlBar.IsEffectOn = _videoEngine.EffectSet;
 
                 _videoEngine.StateManager.StateChanged += OnEffectStateChangedAsync;
-#if WINDOWS_PHONE_APP
                 _videoEngine.Messenger.FrameCaptured += OnFrameCapturedAsync;
                 _videoEngine.Messenger.PostProcessComplete += OnPostProcessCompleteAsync;
-#endif
             }
             else
             {
@@ -279,10 +271,8 @@ namespace ObjectTrackingDemo
                 ((App)Application.Current)._settings.Save();
 
                 _videoEngine.StateManager.StateChanged -= OnEffectStateChangedAsync;
-#if WINDOWS_PHONE_APP
                 _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
                 _videoEngine.Messenger.PostProcessComplete -= OnPostProcessCompleteAsync;
-#endif
 
                 captureElement.Source = null;
                 _videoEngine.DisposeAsync();
@@ -342,6 +332,9 @@ namespace ObjectTrackingDemo
                             break;
 
                         case VideoEffectState.Triggered:
+                        #if WINDOWS_APP
+                            await _videoEngine.MediaCapture.AddEffectAsync(_videoEngine.RecordMediaStreamType, VideoEngine.BufferEffectActivationId, _videoEngine.Properties);
+                        #endif // WINDOWS_APP
                             lockedRectangle.Visibility = Visibility.Collapsed;
                             progressBar.Visibility = Visibility.Visible;
                             break;
@@ -356,8 +349,6 @@ namespace ObjectTrackingDemo
 
                 });
         }
-
-#if WINDOWS_PHONE_APP
         private async void OnFrameCapturedAsync(byte[] pixelArray, int width, int height, int frameId)
         {
             _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
@@ -426,6 +417,8 @@ namespace ObjectTrackingDemo
                     {
                         double imageActualWidth = processingResultImage.ActualWidth;
                         double imageActualHeight = processingResultImage.ActualHeight;
+
+#if WINDOWS_PHONE_APP
                         double imageScaleX = imageActualWidth / imageWidth;
                         double imageScaleY = imageActualHeight / imageHeight;
 
@@ -438,6 +431,15 @@ namespace ObjectTrackingDemo
                             ref secondRectangle, ref secondRectangleTranslateTransform,
                             toObjectDetails, imageScaleX, imageScaleY,
                             imageActualWidth, imageActualHeight);
+#else // WINDOWS_PHONE_APP
+                        SetRectangleSizeAndPositionBasedOnObjectDetails(
+                            ref firstRectangle, ref firstRectangleTranslateTransform,
+                            fromObjectDetails, imageActualHeight);
+
+                        SetRectangleSizeAndPositionBasedOnObjectDetails(
+                            ref secondRectangle, ref secondRectangleTranslateTransform,
+                            toObjectDetails, imageActualHeight);
+#endif // WINDOWS_PHONE_APP
                     }
 
                     processingResultGrid.Visibility = Visibility.Visible;
@@ -446,7 +448,6 @@ namespace ObjectTrackingDemo
             });
 
         }
-#endif
 
         private void OnHideButtonClicked(object sender, RoutedEventArgs e)
         {
@@ -505,11 +506,7 @@ namespace ObjectTrackingDemo
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-#if WINDOWS_PHONE_APP
         private void OnViewfinderCanvasTapped(object sender, TappedRoutedEventArgs e)
-#else
-        private async void OnViewfinderCanvasTapped(object sender, TappedRoutedEventArgs e)
-#endif
         {
             if (ControlsVisibility == Visibility.Collapsed)
             {
@@ -518,56 +515,7 @@ namespace ObjectTrackingDemo
             }
 
             _viewFinderCanvasTappedPoint = e.GetPosition(viewfinderCanvas);
-
-#if WINDOWS_APP
-            if (((App)Application.Current)._settings.Torch)
-            {
-                _videoEngine.Torch = false;
-                _videoEngine.Flash = true;
-            }
-
-            CapturedPhoto photo = await _videoEngine.CapturePhotoAsync();
-
-            if (photo != null)
-            {
-                uint width = photo.Frame.Width;
-                uint height = photo.Frame.Height;
-
-                WriteableBitmap bitmap = new WriteableBitmap((int)width, (int)height);
-                photo.Frame.Seek(0);
-                await bitmap.SetSourceAsync(photo.Frame);
-                capturedPhotoImage.Source = bitmap;
-                capturedPhotoImage.Visibility = Visibility.Visible;
-
-                if (_hideCapturePhotoImageTimer != null)
-                {
-                    _hideCapturePhotoImageTimer.Dispose();
-                    _hideCapturePhotoImageTimer = null;
-                }
-
-                _hideCapturePhotoImageTimer = new Timer(HideCapturedPhotoImageAsync, null, 8000, Timeout.Infinite);
-   
-                int scaledWidth = (int)(_videoEngine.ResolutionWidth * viewfinderCanvas.ActualHeight / _videoEngine.ResolutionHeight);
-                int pointX = (int)(((_viewFinderCanvasTappedPoint.X - (viewfinderCanvas.ActualWidth - scaledWidth) / 2) / scaledWidth) * width);
-                int pointY = (int)((_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * height);
-
-                System.Diagnostics.Debug.WriteLine("Picked point is ["
-                    + (int)_viewFinderCanvasTappedPoint.X + "; " + (int)_viewFinderCanvasTappedPoint.Y
-                    + "], size of the canvas is "
-                    + (int)viewfinderCanvas.ActualWidth + "x" + (int)viewfinderCanvas.ActualHeight
-                    + " => point in image is [" + pointX + "; " + pointY + "]");
-
-                SetColor(ImageProcessingUtils.GetColorAtPoint(bitmap, width, height, new Point() { X = pointX, Y = pointY }));
-
-                if (((App)Application.Current)._settings.Torch)
-                {
-                    // Restore torch after a photo has been captured
-                    _videoEngine.Torch = true;
-                }
-            }
-#else
             _videoEngine.Messenger.RequestFrame(ColorPickFrameRequestId);
-#endif
         }
 
         private void OnColorPickerButtonClicked(object sender, RoutedEventArgs e)

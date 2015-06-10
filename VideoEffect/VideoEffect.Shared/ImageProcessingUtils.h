@@ -58,6 +58,10 @@ public: // Static methods
 	static BYTE* mergeFramesNV12(
 		BYTE* leftFrame, BYTE* rightFrame,
 		const UINT32& frameWidth, const UINT32& frameHeight, UINT32& joinX);
+
+	static BYTE* mergeFramesYUY2(
+		BYTE* leftFrame, BYTE* rightFrame,
+		const UINT32& frameWidth, const UINT32& frameHeight, UINT32& joinX);
 	
     static BYTE* copyFrame(BYTE* source, const size_t size);
 
