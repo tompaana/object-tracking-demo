@@ -5,6 +5,9 @@
 This is a Windows universal application demonstrating how to track objects in a
 feed provided by camera.
 
+![Screenshot 1](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/OTDScreenshot2Small.png)&nbsp;
+![Screenshot 2](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/OTDScreenshot3Small.png)
+
 ## Disclaimer ##
 
 You know how they say you shouldn't start a speech with an apology (because it
@@ -28,7 +31,16 @@ However, I'm *sorry*, but:
 
 ## What does it do? ##
 
-[TODO]
+![Object motion captured](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/ObjectMotionCapturedScaled.png)
+
+## How do I use it? ##
+
+**Take. It. Slow.** When you start, select the color of the object by tapping
+the viewfinder. The app will select the color in the point tapped. To fine-tune
+the color, tap the color selection button (which also displays the selected
+color). Start with very **low threshold value** and increase it little by little
+as needed until the app recognizes the desired object. Note that you need to
+tap the magic wand icon to start the video engine (the effect).
 
 ## How does it work? ##
 
