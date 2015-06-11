@@ -5,7 +5,6 @@
 This is a Windows universal application demonstrating how to track objects in a
 feed provided by camera.
 
-![Screenshot 1](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/OTDScreenshot2Small.png)&nbsp;
 ![Screenshot 2](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/OTDScreenshot3Small.png)
 
 ## Disclaimer ##
@@ -42,10 +41,23 @@ color). Start with very **low threshold value** and increase it little by little
 as needed until the app recognizes the desired object. Note that you need to
 tap the magic wand icon to start the video engine (the effect).
 
+If you use too high threshold, especially on the phone, the app may feel like
+it has stopped responding. This is because there is too much data sent for
+further processing.
+
 ## How does it work? ##
 
 [TODO]
 
+![Effect workloads based on states](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/EffectWorkloadsBasedOnState.png)
+
 ## Where can I learn more? ##
 
 [TODO]
+
+## Known issues ##
+
+* Phone build: The app is sometimes really slow or even jams. The root cause is
+  the object mapping algorithm, which does not handle certain kind of data well.
+  To manage the problem use as low threshold value as possible.
+* The app crashes often.
