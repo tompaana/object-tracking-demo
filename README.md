@@ -32,7 +32,19 @@ However, I'm *sorry*, but:
 
 ## What does it do? ##
 
+This:
+
 ![Object motion captured](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/ObjectMotionCapturedScaled.png)
+
+The features of the demo are:
+
+* Locking to an object/area in the video feed based on the given color and
+  threshold
+* After locking to a target, the demo will start recording *N* number of frames
+  into a ring buffer for later analysis
+* When the object displacement exceeds set parameters (the thing moves), it will
+  trigger a post-processing operation, which will try to deduce, using the
+  frames in the buffer, where the object went
 
 ## How do I use it? ##
 
@@ -57,7 +69,22 @@ on high level:
 
 ### Few words on architecture ###
 
-[TODO]
+The solution has two separate projects:
+[ObjectTrackingDemo](https://github.com/tompaana/object-tracking-demo/tree/master/ObjectTrackingDemo),
+which is the UI project written with XAML and C#, and
+[VideoEffect](https://github.com/tompaana/object-tracking-demo/tree/master/VideoEffect),
+a native component, written with C++, that does the heavy lifting.
+
+### Important classes of `VideoEffect` project ###
+
+* [BufferEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/BufferEffect.h): The video effect, which runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
+* [ObjectFinderEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ObjectFinderEffect.h): The video effect, which manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
+* [ImageAnalyzer](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageAnalyzer.h): Utilizes the methods provided by `ImageProcessingUtils` for higher level image analysis.
+* [ImageProcessingUtils](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessingUtils.h): Provides the basic methods for chroma filtering, mapping objects from binary image, creating convex hulls etc.
+
+The image below describes the workloads of the two video effects based on the
+application state. Red color signifies heavy CPU load whereas green means low
+CPU load.
 
 ![Effect workloads based on states](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/EffectWorkloadsBasedOnState.png)
 
