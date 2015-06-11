@@ -75,7 +75,7 @@ which is the UI project written with XAML and C#, and
 [VideoEffect](https://github.com/tompaana/object-tracking-demo/tree/master/VideoEffect/VideoEffect.Shared),
 a native component, written with C++, that does the heavy lifting.
 
-### Important classes of `VideoEffect` project ###
+**Important classes of `VideoEffect` project**
 
 * [BufferEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/BufferEffect.h): The video effect, which runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
 * [ObjectFinderEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ObjectFinderEffect.h): The video effect, which manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
