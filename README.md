@@ -7,6 +7,8 @@ feed provided by camera.
 
 ![Screenshot 2](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/OTDScreenshot3Small.png)
 
+**Supported platforms:** Windows 8.1 (WinRT), Windows Phone 8.1, Windows Store Apps
+
 ## Disclaimer ##
 
 You know how they say you shouldn't start a speech with an apology (because it
@@ -47,17 +49,21 @@ further processing.
 
 ## How does it work? ##
 
+The functionality and methods used are explained in the following articles
+on high level:
+
+* [Tracking Objects from Video Feed](http://tomipaananen.azurewebsites.net/?p=361) ([Part I](http://tomipaananen.azurewebsites.net/?p=361), [Part II](http://tomipaananen.azurewebsites.net/?p=481) and [Part III](http://tomipaananen.azurewebsites.net/?p=581))
+* [Buffering Video Frames](http://juhana.cloudapp.net/?p=181) (about using ring/circular buffers)
+
+### Few words on architecture ###
+
 [TODO]
 
 ![Effect workloads based on states](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/EffectWorkloadsBasedOnState.png)
-
-## Where can I learn more? ##
-
-[TODO]
 
 ## Known issues ##
 
 * Phone build: The app is sometimes really slow or even jams. The root cause is
   the object mapping algorithm, which does not handle certain kind of data well.
   To manage the problem use as low threshold value as possible.
-* The app crashes often.
+* The app crashes often :(
