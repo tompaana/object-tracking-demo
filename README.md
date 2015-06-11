@@ -94,3 +94,4 @@ CPU load.
   the object mapping algorithm, which does not handle certain kind of data well.
   To manage the problem use as low threshold value as possible.
 * The app crashes often :(
+* The solution will not compile with Community 2015 RC version of Visual Studio.
