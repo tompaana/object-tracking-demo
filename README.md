@@ -70,9 +70,9 @@ on high level:
 ### Few words on architecture ###
 
 The solution has two separate projects:
-[ObjectTrackingDemo](https://github.com/tompaana/object-tracking-demo/tree/master/ObjectTrackingDemo),
+[ObjectTrackingDemo](https://github.com/tompaana/object-tracking-demo/tree/master/ObjectTrackingDemo/ObjectTrackingDemo.Shared),
 which is the UI project written with XAML and C#, and
-[VideoEffect](https://github.com/tompaana/object-tracking-demo/tree/master/VideoEffect),
+[VideoEffect](https://github.com/tompaana/object-tracking-demo/tree/master/VideoEffect/VideoEffect.Shared),
 a native component, written with C++, that does the heavy lifting.
 
 ### Important classes of `VideoEffect` project ###
