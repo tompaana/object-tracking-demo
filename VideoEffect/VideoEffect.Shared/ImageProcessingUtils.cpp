@@ -179,16 +179,24 @@ void ChromaFilterTransformImageYUY2(
 
 			if (x >= rcDest.left && x < rcDest.right)
 			{
-				BYTE yy = pSrc_Pixel[x] & 0x00FF;
+				BYTE y0 = pSrc_Pixel[x] & 0x00FF;
 				BYTE u = pSrc_Pixel[x] >> 8;
+				BYTE y1 = pSrc_Pixel[x + 1] & 0x00FF;
 				BYTE v = pSrc_Pixel[x + 1] >> 8;
 
-                GetColorFilteredValues(&yy, &u, &v, targetY, targetU, targetV, threshold, dimmFilteredPixels);
+                GetColorFilteredValues(&y0, &u, &v, targetY, targetU, targetV, threshold, dimmFilteredPixels);
+				GetColorFilteredValues(&y1, &u, &v, targetY, targetU, targetV, threshold, dimmFilteredPixels);
+			
+				pDest_Pixel[x] = y0 | (u << 8);
+				pDest_Pixel[x + 1] = y1 | (v << 8);
 
-				pDest_Pixel[x] = (yy & 0x00FF) | (u << 8);
-				pDest_Pixel[x + 1] = (yy & 0x00FF) | (v << 8);
+				if (y0 == SelectedPixelValue)
+				{
+					numberOfSelectedPixelsY++;
+					numberOfSelectedPixelsX[x]++;
+				}
 
-				if (yy == SelectedPixelValue)
+				if (y1 == SelectedPixelValue)
 				{
 					numberOfSelectedPixelsY++;
 					numberOfSelectedPixelsX[x]++;
