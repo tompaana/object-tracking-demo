@@ -368,8 +368,14 @@ namespace ObjectTrackingDemo
 
                         if (frameId == ColorPickFrameRequestId)
                         {
+#if WINDOWS_PHONE_APP
                             int pointX = (int)((double)(_viewFinderCanvasTappedPoint.X / viewfinderCanvas.ActualWidth) * width);
                             int pointY = (int)((double)(_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * height);
+#else // WINDOWS_PHONE_APP
+                            int scaledWidth = (int)(_videoEngine.ResolutionWidth * viewfinderCanvas.ActualHeight / _videoEngine.ResolutionHeight);
+                            int pointX = (int)(((_viewFinderCanvasTappedPoint.X - (viewfinderCanvas.ActualWidth - scaledWidth) / 2) / scaledWidth) * width);
+                            int pointY = (int)((_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * height);
+#endif // WINDOWS_PHONE_APP                                                        
                             SetColor(ImageProcessingUtils.GetColorAtPoint(
                                 bitmap, (uint)width, (uint)height, new Point() { X = pointX, Y = pointY }));
                         }
@@ -539,6 +545,6 @@ namespace ObjectTrackingDemo
             processingResultGrid.Visibility = Windows.UI.Xaml.Visibility.Collapsed;
         }
 
-        #endregion
+#endregion
     }
 }
