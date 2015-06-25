@@ -9,18 +9,14 @@ feed provided by camera.
 
 **Supported platforms:** Windows 8.1 (WinRT), Windows Phone 8.1, Windows Store Apps
 
+
 ## Disclaimer ##
 
 You know how they say you shouldn't start a speech with an apology (because it
 drops the interest of any listener even before you start). Well, that true.
 However, I'm *sorry*, but:
 
-1. **No, this is not an example how you write good code.** It's a project with a
-   lot of bubble gum to keep of, whatever it does, not totally falling apart.
-   And often, it falls apart i.e. crashes are eminent. Hell, it might even break
-   your device, so be careful with it, ok? It might get better with time
-   (patches), but we will not promise anything.
-2. **No, this is not a feature complete, 100 % verified and tested demo.** It
+   **No, this is not a feature complete, 100 % verified and tested demo.** It
    started as a test, a proof-of-concept if you will, and it hasn't evolved
    further although it roughly does what it was meant to do. There's still a
    long way to go so that we could say it even functions on 50 % capacity.
@@ -29,6 +25,7 @@ However, I'm *sorry*, but:
    similar. It provides a set of different, reusable methods for image
    processing and analysis. And every bit is yours to keep - unless you're
    planning some evil scheme of world domination or something.
+
 
 ## What does it do? ##
 
@@ -46,6 +43,22 @@ The features of the demo are:
   trigger a post-processing operation, which will try to deduce, using the
   frames in the buffer, where the object went
 
+
+## How do I build/compile it? ##
+
+Very easily. If you are targeting a (physical) Windows Phone:
+
+1. Set `ObjectTrackingDemo.WindowsPhone` as **StartUp** project
+2. Make sure the build configuration is set to **ARM** (and **Device** instead of emulator)
+3. Select **BUILD -> Build Solution**, **BUILD -> Deploy Solution** or click **Device** to run on device
+
+If you are targeting big Windows (e.g. laptop):
+
+1. Set `ObjectTrackingDemo.Windows` as **StartUp** project
+2. Make sure the build configuration is set to **x86**
+3. Select **BUILD -> Build Solution**, **BUILD -> Deploy Solution** or click **Local machine** (can be something else too) to run on device
+
+
 ## How do I use it? ##
 
 **Take. It. Slow.** When you start, select the color of the object by tapping
@@ -59,6 +72,7 @@ If you use too high threshold, especially on the phone, the app may feel like
 it has stopped responding. This is because there is too much data sent for
 further processing.
 
+
 ## How does it work? ##
 
 The functionality and methods used are explained in the following articles
@@ -66,6 +80,7 @@ on high level:
 
 * [Tracking Objects from Video Feed](http://tomipaananen.azurewebsites.net/?p=361) ([Part I](http://tomipaananen.azurewebsites.net/?p=361), [Part II](http://tomipaananen.azurewebsites.net/?p=481) and [Part III](http://tomipaananen.azurewebsites.net/?p=581))
 * [Buffering Video Frames](http://juhana.cloudapp.net/?p=181) (about using ring/circular buffers)
+
 
 ### Few words on architecture ###
 
@@ -88,10 +103,12 @@ CPU load.
 
 ![Effect workloads based on states](https://raw.githubusercontent.com/tompaana/object-tracking-demo/master/Doc/EffectWorkloadsBasedOnState.png)
 
+
 ## Known issues ##
 
 * Phone build: The app is sometimes really slow or even jams. The root cause is
   the object mapping algorithm, which does not handle certain kind of data well.
   To manage the problem use as low threshold value as possible.
+* The big Windows version lacks some of the features that the phone version has.
 * The app crashes often :(
 * The solution will not compile with Community 2015 RC version of Visual Studio.

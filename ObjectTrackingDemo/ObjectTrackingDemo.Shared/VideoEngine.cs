@@ -13,6 +13,9 @@ using VideoEffect;
 
 namespace ObjectTrackingDemo
 {
+    /// <summary>
+    /// This class manages the device camera and the native effects.
+    /// </summary>
     public class VideoEngine
     {
         // Constants
@@ -34,16 +37,17 @@ namespace ObjectTrackingDemo
         public event EventHandler<string> ShowMessageRequest;
 
         private InMemoryRandomAccessStream _recordingStream = new InMemoryRandomAccessStream();
-        private StateManager _stateManager = new StateManager();
         private VideoDeviceController _videoDeviceController;
         private DeviceInformation _deviceInformation;
         private DeviceInformationCollection _deviceInformationCollection;
         private VideoEncodingProperties _hfrVideoEncodingProperties;
-        private PropertySet _properties;
         private float[] _yuv;
         private bool _changingThreshold;
 
         private static VideoEngine _instance;
+        /// <summary>
+        /// The singleton instance of this class.
+        /// </summary>
         public static VideoEngine Instance
         {
             get
@@ -57,34 +61,24 @@ namespace ObjectTrackingDemo
             }
         }
 
-        private MediaCapture _mediaCapture = null;
+        #region Properties
+
         public MediaCapture MediaCapture
         {
-            get
-            {
-                return _mediaCapture;
-            }
-            private set
-            {
-                _mediaCapture = value;
-            }
+            get;
+            private set;
         }
 
-        private VideoEffectMessenger _messenger;
         public VideoEffectMessenger Messenger
         {
-            get
-            {
-                return _messenger;
-            }
+            get;
+            private set;
         }
 
         public StateManager StateManager
         {
-            get
-            {
-                return _stateManager;
-            }
+            get;
+            private set;
         }
 
         public bool Flash
@@ -178,7 +172,7 @@ namespace ObjectTrackingDemo
         {
             get
             {
-                return _stateManager.State != VideoEffectState.Idle;
+                return StateManager.State != VideoEffectState.Idle;
             }
         }
 
@@ -196,56 +190,33 @@ namespace ObjectTrackingDemo
 
         public PropertySet Properties
         {
-            get
-            {
-                return _properties;
-            }
+            get;
+            private set;
         }
 
+        #endregion
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
         private VideoEngine()
         {
+            StateManager = new StateManager();
+            Messenger = new VideoEffectMessenger(StateManager);
+
             _yuv = new float[3]
             {
                 128f, 128f, 128f
             };
 
-            _messenger = new VideoEffectMessenger(_stateManager);
+            Properties = new PropertySet();
+            Properties[PropertyKeyThreshold] = 0f;
+            Properties[PropertyKeyY] = _yuv[0];
+            Properties[PropertyKeyU] = _yuv[1];
+            Properties[PropertyKeyV] = _yuv[2];
+            Properties[propertyKeyCommunication] = Messenger;
 
-            _properties = new PropertySet();
-            _properties[PropertyKeyThreshold] = 0f;
-            _properties[PropertyKeyY] = _yuv[0];
-            _properties[PropertyKeyU] = _yuv[1];
-            _properties[PropertyKeyV] = _yuv[2];
-            _properties[propertyKeyCommunication] = _messenger;
-
-            _stateManager.StateChanged += OnStateChanged;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="yuv"></param>
-        /// <param name="g"></param>
-        /// <param name="b"></param>
-        public async void SetYUVAsync(byte[] yuv)
-        {
-            if (EffectSet)
-            {
-                await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
-            }
-
-            _yuv[0] = (float)yuv[0];
-            _yuv[1] = (float)yuv[1];
-            _yuv[2] = (float)yuv[2];
-            _properties[PropertyKeyY] = _yuv[0];
-            _properties[PropertyKeyU] = _yuv[1];
-            _properties[PropertyKeyV] = _yuv[2];
-            _properties[propertyKeyCommunication] = _messenger;
-
-            if (EffectSet)
-            {
-                await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, _properties);
-            }
+            StateManager.StateChanged += OnStateChanged;
         }
 
         public async Task<bool> InitializeAsync()
@@ -276,41 +247,44 @@ namespace ObjectTrackingDemo
 
                 if (listOfPropertiesWithHighestFrameRate != null && listOfPropertiesWithHighestFrameRate.Count > 0)
                 {
-                    VideoEncodingProperties selectedVideoEncodingProperties = listOfPropertiesWithHighestFrameRate.ElementAt(0);
-                    uint selectedVideoWidth = selectedVideoEncodingProperties.Width;
+                    VideoEncodingProperties selectedRecordingVideoEncodingProperties = listOfPropertiesWithHighestFrameRate.ElementAt(0);
+                    uint selectedRecordingVideoWidth = selectedRecordingVideoEncodingProperties.Width;
 
                     for (int i = 1; i < listOfPropertiesWithHighestFrameRate.Count; ++i)
                     {
                         VideoEncodingProperties currentProperties = listOfPropertiesWithHighestFrameRate.ElementAt(i);
 
-                        if (selectedVideoWidth > MaximumVideoWidth ||
-                            (currentProperties.Width <= MaximumVideoWidth && currentProperties.Width > selectedVideoWidth))
+                        if (selectedRecordingVideoWidth > MaximumVideoWidth ||
+                            (currentProperties.Width <= MaximumVideoWidth && currentProperties.Width > selectedRecordingVideoWidth))
                         {
-                            selectedVideoEncodingProperties = currentProperties;
-                            selectedVideoWidth = selectedVideoEncodingProperties.Width;
+                            selectedRecordingVideoEncodingProperties = currentProperties;
+                            selectedRecordingVideoWidth = selectedRecordingVideoEncodingProperties.Width;
                         }
                     }
 
-                    System.Diagnostics.Debug.WriteLine("Highest framerate is "
-                        + CameraUtils.ResolveFrameRate(selectedVideoEncodingProperties)
-                        + " frames per second with selected resolution of "
-                        + selectedVideoWidth + "x" + selectedVideoEncodingProperties.Height);
+                    _hfrVideoEncodingProperties = selectedRecordingVideoEncodingProperties;
+                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(RecordMediaStreamType, selectedRecordingVideoEncodingProperties);
 
-                    _hfrVideoEncodingProperties = selectedVideoEncodingProperties;
-                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(RecordMediaStreamType, selectedVideoEncodingProperties);
-
-                    VideoEncodingProperties propertiesForPreview =
+                    VideoEncodingProperties previewVideoEncodingProperties =
                         CameraUtils.FindVideoEncodingProperties(
                             _videoDeviceController, PreviewMediaStreamType,
-                            PreviewFrameRate, selectedVideoWidth, selectedVideoEncodingProperties.Height);
+                            PreviewFrameRate, selectedRecordingVideoWidth, selectedRecordingVideoEncodingProperties.Height);
 
-                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(PreviewMediaStreamType, propertiesForPreview);
+                    System.Diagnostics.Debug.WriteLine("Highest framerate for recording is "
+                        + CameraUtils.ResolveFrameRate(selectedRecordingVideoEncodingProperties)
+                        + " frames per second with selected resolution of "
+                        + selectedRecordingVideoWidth + "x" + selectedRecordingVideoEncodingProperties.Height
+                        + "\nThe preview properties for viewfinder are "
+                        + CameraUtils.ResolveFrameRate(previewVideoEncodingProperties) + " FPS and "
+                        + previewVideoEncodingProperties.Width + "x" + previewVideoEncodingProperties.Height);
+
+                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(PreviewMediaStreamType, previewVideoEncodingProperties);
                 }
 
                 Initialized = true;
             }
 
-            await MediaCapture.AddEffectAsync(RecordMediaStreamType, BufferEffectActivationId, _properties);
+            await MediaCapture.AddEffectAsync(RecordMediaStreamType, BufferEffectActivationId, Properties);
 
             if (MediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
             {
@@ -359,7 +333,8 @@ namespace ObjectTrackingDemo
 #endif // WINDOWS_PHONE_APP
 
                 // Get camera's resolution
-                VideoEncodingProperties resolution = (VideoEncodingProperties)MediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoRecord);
+                VideoEncodingProperties resolution =
+                    (VideoEncodingProperties)MediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoRecord);
                 ResolutionWidth = (int)resolution.Width;
                 ResolutionHeight = (int)resolution.Height;
            
@@ -388,32 +363,42 @@ namespace ObjectTrackingDemo
                 await MediaCapture.StopPreviewAsync();
                 MediaCapture.Dispose();
                 MediaCapture = null;
-                //EffectSet = false;
                 PreviewStarted = false;
                 RecordingStarted = false;
                 Initialized = false;
             }
         }
 
-        public async Task<bool> ToggleEffectAsync()
+        /// <summary>
+        /// Sets the target YUV values for the effect.
+        /// </summary>
+        /// <param name="yuv">The new target YUV.</param>
+        public async void SetYUVAsync(byte[] yuv)
         {
-            if (Started)
+            if (EffectSet)
             {
-                if (EffectSet)
-                {
-                    await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
-                    _stateManager.State = VideoEffectState.Idle;
-                }
-                else
-                {
-                    await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, _properties);
-                    _stateManager.State = VideoEffectState.Locking;
-                }
+                await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
             }
 
-            return EffectSet;
+            _yuv[0] = (float)yuv[0];
+            _yuv[1] = (float)yuv[1];
+            _yuv[2] = (float)yuv[2];
+            Properties[PropertyKeyY] = _yuv[0];
+            Properties[PropertyKeyU] = _yuv[1];
+            Properties[PropertyKeyV] = _yuv[2];
+            Properties[propertyKeyCommunication] = Messenger;
+
+            if (EffectSet)
+            {
+                await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, Properties);
+            }
         }
 
+        /// <summary>
+        /// Sets the given threshold value for the effect.
+        /// </summary>
+        /// <param name="threshold">The new threshold value.</param>
+        /// <returns>True, if successful. False otherwise.</returns>
         public async Task<bool> SetThresholdAsync(float threshold)
         {
             if (Initialized && !_changingThreshold && threshold >= MinimumThreshold && threshold <= MaximumThreshold)
@@ -422,16 +407,38 @@ namespace ObjectTrackingDemo
                 _changingThreshold = true;
 
                 await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
-                _properties[PropertyKeyThreshold] = threshold;
-                await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, _properties);
+                Properties[PropertyKeyThreshold] = threshold;
+                await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, Properties);
 
                 _changingThreshold = false;
-                //EffectSet = true;
 
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Starts/stops the effect.
+        /// </summary>
+        /// <returns>True, if the effect was set on. False, if it was turned off.</returns>
+        public async Task<bool> ToggleEffectAsync()
+        {
+            if (Started)
+            {
+                if (EffectSet)
+                {
+                    await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
+                    StateManager.State = VideoEffectState.Idle;
+                }
+                else
+                {
+                    await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, Properties);
+                    StateManager.State = VideoEffectState.Locking;
+                }
+            }
+
+            return EffectSet;
         }
 
         private async void OnStateChanged(VideoEffectState newState, VideoEffectState oldState)

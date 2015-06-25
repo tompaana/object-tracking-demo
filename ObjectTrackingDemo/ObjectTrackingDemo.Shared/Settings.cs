@@ -18,7 +18,6 @@ namespace ObjectTrackingDemo
         private const string KeyFlash = "Flash";
         private const string KeyTorch = "Torch";
 
-
         private ApplicationDataContainer _localSettings = ApplicationData.Current.LocalSettings;
 
         public Color TargetColor

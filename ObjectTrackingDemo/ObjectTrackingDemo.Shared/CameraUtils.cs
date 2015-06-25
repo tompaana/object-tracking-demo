@@ -184,12 +184,13 @@ namespace ObjectTrackingDemo
         /// </summary>
 		/// <param name="mediaCapture">The media capture instance.</param>
 		/// <returns>The recording video format as string.</returns>
-		public static string ResolveRecordingVideoFormat(MediaCapture mediaCapture)
+		public static string ResolveVideoRecordFormat(MediaCapture mediaCapture)
         {
             VideoEncodingProperties videoEncodingProperties =
                 (VideoEncodingProperties)mediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoRecord);
-
-            return videoEncodingProperties.Subtype;
+            string subType = videoEncodingProperties.Subtype;
+            System.Diagnostics.Debug.WriteLine("ResolveRecordingVideoFormat: " + subType);
+            return subType;
         }
     }
 }

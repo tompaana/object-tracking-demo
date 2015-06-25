@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Threading;
+using System.Threading.Tasks;
 using Windows.ApplicationModel.Core;
 using Windows.Foundation;
 using Windows.Media.Capture;
@@ -17,11 +18,11 @@ using Windows.UI.Xaml.Shapes;
 
 namespace ObjectTrackingDemo
 {
-    public sealed partial class MainPage : Page, INotifyPropertyChanged
+    public sealed partial class MainPage : Page
     {
+        private const string VideoEncodingPropertiesSubTypeYUV2 = "YUY2";
+        private const string VideoEncodingPropertiesSubTypeMJPG = "MJPG";
         private const int ColorPickFrameRequestId = 42;
-
-        public event PropertyChangedEventHandler PropertyChanged;
 
         public Visibility ControlsVisibility
         {
@@ -128,6 +129,11 @@ namespace ObjectTrackingDemo
             base.OnNavigatedFrom(e);
         }
 
+        /// <summary>
+        /// Sets the new target color.
+        /// </summary>
+        /// <param name="newColor">The new color.</param>
+        /// <param name="saveSettings">If true, will save the color to the local storage.</param>
         private void SetColor(Color newColor, bool saveSettings = true)
         {
             colorPickerControl.CurrentColor = newColor;
@@ -150,12 +156,17 @@ namespace ObjectTrackingDemo
         /// <summary>
         /// Sets the effect threshold.
         /// </summary>
-        /// <param name="threshold"></param>
+        /// <param name="threshold">The new threshold value.</param>
         private void SetThreshold(double threshold)
         {
             thresholdSlider.Value = threshold;
         }
 
+        /// <summary>
+        /// Sets the flash on/off.
+        /// </summary>
+        /// <param name="enabled">If true, will try to set the flash on.</param>
+        /// <param name="saveSettings">If true, will save the color to the local storage.</param>
         private void SetFlash(bool enabled, bool saveSettings = true)
         {
             _videoEngine.Flash = _videoEngine.Torch = enabled;
@@ -169,40 +180,46 @@ namespace ObjectTrackingDemo
             }
         }
 
-#if WINDOWS_PHONE_APP
+        /// <summary>
+        /// Sets the position and the size of the rectangle to bound the given area
+        /// (defined by ObjectDetails instance).
+        /// </summary>
+        /// <param name="rectangle">The rectangle object.</param>
+        /// <param name="rectangleTransform">The transform of the rectangle.</param>
+        /// <param name="context">The context i.e. the UI element "inside" which the rectangle is drawn (e.g. capture element).</param>
+        /// <param name="objectDetails">The object details defining the area to bound.</param>
         private void SetRectangleSizeAndPositionBasedOnObjectDetails(
             ref Rectangle rectangle, ref TranslateTransform rectangleTransform,
-            ObjectDetails objectDetails, double scaleX, double scaleY,
-            double contextActualWidth, double contextActualHeight)
+            FrameworkElement context, ObjectDetails objectDetails)
         {
-            double rectangleWidth = objectDetails.width * scaleX;
-            double rectangleHeight = objectDetails.height * scaleY;
+            double scaleX = context.ActualWidth / _videoEngine.ResolutionWidth;
+            double scaleY = context.ActualHeight / _videoEngine.ResolutionHeight;
 
-            rectangle.Width = rectangleWidth;
-            rectangle.Height = rectangleHeight;
-            rectangleTransform.X = objectDetails.centerX * scaleX - contextActualWidth / 2;
-            rectangleTransform.Y = objectDetails.centerY * scaleY - contextActualHeight / 2;
+            rectangle.Width = objectDetails.width * scaleX;
+            rectangle.Height = objectDetails.height * scaleY;
+
+            rectangleTransform.X = objectDetails.centerX * scaleX - context.ActualWidth / 2;
+            rectangleTransform.Y = objectDetails.centerY * scaleY - context.ActualHeight / 2;
         }
-#else // WINDOWS_PHONE_APP
-        private void SetRectangleSizeAndPositionBasedOnObjectDetails(
-            ref Rectangle rectangle, ref TranslateTransform rectangleTransform,
-            ObjectDetails objectDetails, double contextActualHeight)
-        {
-            double scale = contextActualHeight / _videoEngine.ResolutionHeight;
 
-            rectangle.Width = objectDetails.width * scale;
-            rectangle.Height = objectDetails.height * scale;
-            rectangleTransform.X = (objectDetails.centerX - _videoEngine.ResolutionWidth / 2) * scale;
-            rectangleTransform.Y = (objectDetails.centerY - _videoEngine.ResolutionHeight / 2) * scale;
-        }
-#endif // WINDOWS_PHONE_APP
-
-        private void NotifyPropertyChanged(string propertyName = "")
+        /// <summary>
+        /// Converts the given pixel array into a writeable bitmap.
+        /// </summary>
+        /// <param name="pixelArray">The pixel array.</param>
+        /// <param name="width">The width of the image in pixels.</param>
+        /// <param name="height">The height of the image in pixels.</param>
+        /// <returns></returns>
+        private async Task<WriteableBitmap> PixelArrayToWriteableBitmapAsync(byte[] pixelArray, int width, int height)
         {
-            if (PropertyChanged != null)
-            {
-                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-            }
+            string videoRecordFormat = CameraUtils.ResolveVideoRecordFormat(_videoEngine.MediaCapture);
+
+            WriteableBitmap bitmap =
+                (videoRecordFormat.Equals(VideoEncodingPropertiesSubTypeYUV2)
+                 || videoRecordFormat.Equals(VideoEncodingPropertiesSubTypeMJPG))
+                    ? await ImageProcessingUtils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, width, height)
+                    : await ImageProcessingUtils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, width, height);
+
+            return bitmap;
         }
 
         #region Timer callbacks
@@ -286,7 +303,11 @@ namespace ObjectTrackingDemo
 
         private async void OnEffectStateChangedAsync(VideoEffectState newState, VideoEffectState oldState)
         {
+#if WINDOWS_APP
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+#else
+            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+#endif
                 {
                     stateTextBlock.Text = "State: " + newState.ToString();
 
@@ -312,18 +333,9 @@ namespace ObjectTrackingDemo
                         case VideoEffectState.Locked:
                             if (lockedRectangle.Visibility == Visibility.Collapsed)
                             {
-                            #if WINDOWS_PHONE_APP
                                 SetRectangleSizeAndPositionBasedOnObjectDetails(
                                     ref lockedRectangle, ref lockedRectangleTranslateTransform,
-                                    _videoEngine.Messenger.LockedRect,
-                                    captureElement.ActualWidth / _screenResolutionX,
-                                    captureElement.ActualHeight / _screenResolutionY,
-                                    captureElement.ActualWidth, captureElement.ActualHeight);
-                            #else // WINDOWS_PHONE_APP
-                                SetRectangleSizeAndPositionBasedOnObjectDetails(
-                                    ref lockedRectangle, ref lockedRectangleTranslateTransform,
-                                    _videoEngine.Messenger.LockedRect, captureElement.ActualHeight);
-                            #endif // WINDOWS_PHONE_APP
+                                    captureElement, _videoEngine.Messenger.LockedRect);
 
                                 lockedRectangle.Visibility = Visibility.Visible;
                             }
@@ -332,9 +344,9 @@ namespace ObjectTrackingDemo
                             break;
 
                         case VideoEffectState.Triggered:
-                        #if WINDOWS_APP
+#if WINDOWS_APP
                             await _videoEngine.MediaCapture.AddEffectAsync(_videoEngine.RecordMediaStreamType, VideoEngine.BufferEffectActivationId, _videoEngine.Properties);
-                        #endif // WINDOWS_APP
+#endif // WINDOWS_APP
                             lockedRectangle.Visibility = Visibility.Collapsed;
                             progressBar.Visibility = Visibility.Visible;
                             break;
@@ -349,16 +361,15 @@ namespace ObjectTrackingDemo
 
                 });
         }
-        private async void OnFrameCapturedAsync(byte[] pixelArray, int width, int height, int frameId)
+
+        private async void OnFrameCapturedAsync(byte[] pixelArray, int frameWidth, int frameHeight, int frameId)
         {
             _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
             System.Diagnostics.Debug.WriteLine("OnFrameCapturedAsync");
 
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
                 {
-                    WriteableBitmap bitmap = CameraUtils.ResolveRecordingVideoFormat(_videoEngine.MediaCapture).Equals("YUY2") ? 
-                        await ImageProcessingUtils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, width, height) :
-                        await ImageProcessingUtils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, width, height);
+                    WriteableBitmap bitmap = await PixelArrayToWriteableBitmapAsync(pixelArray, frameWidth, frameHeight);
 
                     if (bitmap != null)
                     {
@@ -368,16 +379,12 @@ namespace ObjectTrackingDemo
 
                         if (frameId == ColorPickFrameRequestId)
                         {
-#if WINDOWS_PHONE_APP
-                            int pointX = (int)((double)(_viewFinderCanvasTappedPoint.X / viewfinderCanvas.ActualWidth) * width);
-                            int pointY = (int)((double)(_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * height);
-#else // WINDOWS_PHONE_APP
                             int scaledWidth = (int)(_videoEngine.ResolutionWidth * viewfinderCanvas.ActualHeight / _videoEngine.ResolutionHeight);
-                            int pointX = (int)(((_viewFinderCanvasTappedPoint.X - (viewfinderCanvas.ActualWidth - scaledWidth) / 2) / scaledWidth) * width);
-                            int pointY = (int)((_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * height);
-#endif // WINDOWS_PHONE_APP                                                        
+                            int pointX = (int)(((_viewFinderCanvasTappedPoint.X - (viewfinderCanvas.ActualWidth - scaledWidth) / 2) / scaledWidth) * frameWidth);
+                            int pointY = (int)((_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * frameHeight);
+                                                      
                             SetColor(ImageProcessingUtils.GetColorAtPoint(
-                                bitmap, (uint)width, (uint)height, new Point() { X = pointX, Y = pointY }));
+                                bitmap, (uint)frameWidth, (uint)frameHeight, new Point() { X = pointX, Y = pointY }));
                         }
 
                         if (_hideCapturePhotoImageTimer != null)
@@ -399,9 +406,7 @@ namespace ObjectTrackingDemo
         {
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                WriteableBitmap bitmap = CameraUtils.ResolveRecordingVideoFormat(_videoEngine.MediaCapture).Equals("YUY2") ?
-                    await ImageProcessingUtils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight) :
-                    await ImageProcessingUtils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight);
+                WriteableBitmap bitmap = await PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight);
 
                 if (bitmap != null)
                 {
@@ -421,38 +426,17 @@ namespace ObjectTrackingDemo
 
                     if (imageWidth > 0)
                     {
-                        double imageActualWidth = processingResultImage.ActualWidth;
-                        double imageActualHeight = processingResultImage.ActualHeight;
-
-#if WINDOWS_PHONE_APP
-                        double imageScaleX = imageActualWidth / imageWidth;
-                        double imageScaleY = imageActualHeight / imageHeight;
-
                         SetRectangleSizeAndPositionBasedOnObjectDetails(
                             ref firstRectangle, ref firstRectangleTranslateTransform,
-                            fromObjectDetails, imageScaleX, imageScaleY,
-                            imageActualWidth, imageActualHeight);
+                            processingResultImage, fromObjectDetails);
 
                         SetRectangleSizeAndPositionBasedOnObjectDetails(
                             ref secondRectangle, ref secondRectangleTranslateTransform,
-                            toObjectDetails, imageScaleX, imageScaleY,
-                            imageActualWidth, imageActualHeight);
-#else // WINDOWS_PHONE_APP
-                        SetRectangleSizeAndPositionBasedOnObjectDetails(
-                            ref firstRectangle, ref firstRectangleTranslateTransform,
-                            fromObjectDetails, imageActualHeight);
-
-                        SetRectangleSizeAndPositionBasedOnObjectDetails(
-                            ref secondRectangle, ref secondRectangleTranslateTransform,
-                            toObjectDetails, imageActualHeight);
-
-                        processingResultImage.Stretch = Stretch.None;
-#endif // WINDOWS_PHONE_APP
+                            processingResultImage, toObjectDetails);
                     }
 
                     processingResultGrid.Visibility = Visibility.Visible;
                 }
-
             });
 
         }
@@ -545,6 +529,6 @@ namespace ObjectTrackingDemo
             processingResultGrid.Visibility = Windows.UI.Xaml.Visibility.Collapsed;
         }
 
-#endregion
+        #endregion
     }
 }
