@@ -18,16 +18,18 @@ namespace ObjectTrackingDemo
         // Constants
         public const string EffectActivationId = "ObjectFinderEffectTransform.ObjectFinderEffectEffect";
         public const string BufferEffectActivationId = "BufferEffect.BufferEffect";
+        public readonly MediaStreamType PreviewMediaStreamType = MediaStreamType.VideoPreview;
+        public readonly MediaStreamType RecordMediaStreamType = MediaStreamType.VideoRecord;
+
         private const string PropertyKeyThreshold = "Threshold";
         private const string PropertyKeyY = "PropertyY";
         private const string PropertyKeyU = "PropertyU";
         private const string PropertyKeyV = "PropertyV";
         private const string propertyKeyCommunication = "Communication";
-        public readonly MediaStreamType PreviewMediaStreamType = MediaStreamType.VideoPreview;
-        public readonly MediaStreamType RecordMediaStreamType = MediaStreamType.VideoRecord;
-        private const uint PreviewFrameRate = 30;
         private const int MinimumThreshold = 0;
         private const int MaximumThreshold = 255;
+        private const uint PreviewFrameRate = 30;
+        private const uint MaximumVideoWidth = 1280;
 
         public event EventHandler<string> ShowMessageRequest;
 
@@ -269,22 +271,38 @@ namespace ObjectTrackingDemo
 
                 _videoDeviceController = MediaCapture.VideoDeviceController;
 
-                VideoEncodingProperties propertiesWithHighestFrameRate =
-                    Utils.ResolveVideoEncodingPropertiesWithHighestFrameRate(_videoDeviceController, RecordMediaStreamType);
+                IList<VideoEncodingProperties> listOfPropertiesWithHighestFrameRate =
+                    CameraUtils.ResolveAllVideoEncodingPropertiesWithHighestFrameRate(_videoDeviceController, RecordMediaStreamType);
 
-                if (propertiesWithHighestFrameRate != null)
+                if (listOfPropertiesWithHighestFrameRate != null && listOfPropertiesWithHighestFrameRate.Count > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("Highest framerate is "
-                        + Utils.ResolveFrameRate(propertiesWithHighestFrameRate) + " frames per second with resolution "
-                        + propertiesWithHighestFrameRate.Width + "x" + propertiesWithHighestFrameRate.Height);
+                    VideoEncodingProperties selectedVideoEncodingProperties = listOfPropertiesWithHighestFrameRate.ElementAt(0);
+                    uint selectedVideoWidth = selectedVideoEncodingProperties.Width;
 
-                    _hfrVideoEncodingProperties = propertiesWithHighestFrameRate;
-                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(RecordMediaStreamType, propertiesWithHighestFrameRate);
+                    for (int i = 1; i < listOfPropertiesWithHighestFrameRate.Count; ++i)
+                    {
+                        VideoEncodingProperties currentProperties = listOfPropertiesWithHighestFrameRate.ElementAt(i);
+
+                        if (selectedVideoWidth > MaximumVideoWidth ||
+                            (currentProperties.Width <= MaximumVideoWidth && currentProperties.Width > selectedVideoWidth))
+                        {
+                            selectedVideoEncodingProperties = currentProperties;
+                            selectedVideoWidth = selectedVideoEncodingProperties.Width;
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("Highest framerate is "
+                        + CameraUtils.ResolveFrameRate(selectedVideoEncodingProperties)
+                        + " frames per second with selected resolution of "
+                        + selectedVideoWidth + "x" + selectedVideoEncodingProperties.Height);
+
+                    _hfrVideoEncodingProperties = selectedVideoEncodingProperties;
+                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(RecordMediaStreamType, selectedVideoEncodingProperties);
 
                     VideoEncodingProperties propertiesForPreview =
-                        Utils.FindVideoEncodingProperties(
+                        CameraUtils.FindVideoEncodingProperties(
                             _videoDeviceController, PreviewMediaStreamType,
-                            PreviewFrameRate, propertiesWithHighestFrameRate.Width, propertiesWithHighestFrameRate.Height);
+                            PreviewFrameRate, selectedVideoWidth, selectedVideoEncodingProperties.Height);
 
                     await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(PreviewMediaStreamType, propertiesForPreview);
                 }

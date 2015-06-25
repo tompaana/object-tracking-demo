@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime; // For IBuffer.ToArray()
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Xaml.Media.Imaging;
@@ -261,6 +264,174 @@ namespace ObjectTrackingDemo
             }
 
             return color;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="yuvPixelArray"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        public async static Task<WriteableBitmap> NV12PixelArrayToWriteableBitmapAsync(byte[] yuvPixelArray, int width, int height)
+        {
+            WriteableBitmap writeableBitmap = null;
+            byte[] rgbPixelArray = ImageProcessingUtils.NV12PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+
+            if (rgbPixelArray != null)
+            {
+                writeableBitmap = new WriteableBitmap(width, height);
+
+                using (Stream stream = writeableBitmap.PixelBuffer.AsStream())
+                {
+                    if (stream.CanWrite)
+                    {
+                        await stream.WriteAsync(rgbPixelArray, 0, rgbPixelArray.Length);
+                        stream.Flush();
+                    }
+                }
+            }
+
+            return writeableBitmap;
+        }
+
+        public async static Task NV12PixelArrayToWriteableBitmapFileAsync(byte[] yuvPixelArray, int width, int height, string fileName)
+        {
+            byte[] rgbPixelArray = ImageProcessingUtils.NV12PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+
+            var file = await Windows.Storage.ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
+            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                Guid BitmapEncoderGuid = BitmapEncoder.JpegEncoderId;
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoderGuid, stream);
+
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
+                                    (uint)width,
+                                    (uint)height,
+                                    96.0,
+                                    96.0,
+                                    rgbPixelArray);
+
+                await encoder.FlushAsync();
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="yuvPixelArray"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        public static BitmapImage NV12PixelArrayToBitmapImage(byte[] yuvPixelArray, int width, int height)
+        {
+            BitmapImage bitmapImage = null;
+            byte[] rgbPixelArray = ImageProcessingUtils.NV12PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+
+            if (rgbPixelArray != null)
+            {
+                bitmapImage = new BitmapImage();
+
+                InMemoryRandomAccessStream stream = new InMemoryRandomAccessStream();
+                stream.AsStreamForWrite().Write(rgbPixelArray, 0, rgbPixelArray.Length);
+                stream.Seek(0);
+
+                try
+                {
+                    bitmapImage.SetSource(stream);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    bitmapImage = null;
+                }
+            }
+
+            return bitmapImage;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="yuvPixelArray"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        public async static Task<WriteableBitmap> YUY2PixelArrayToWriteableBitmapAsync(byte[] yuvPixelArray, int width, int height)
+        {
+            WriteableBitmap writeableBitmap = null;
+            byte[] rgbPixelArray = ImageProcessingUtils.YUY2PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+
+            if (rgbPixelArray != null)
+            {
+                writeableBitmap = new WriteableBitmap(width, height);
+
+                using (Stream stream = writeableBitmap.PixelBuffer.AsStream())
+                {
+                    if (stream.CanWrite)
+                    {
+                        await stream.WriteAsync(rgbPixelArray, 0, rgbPixelArray.Length);
+                        stream.Flush();
+                    }
+                }
+            }
+
+            return writeableBitmap;
+        }
+
+        public async static Task YUY2PixelArrayToWriteableBitmapFileAsync(byte[] yuvPixelArray, int width, int height, string fileName)
+        {
+            byte[] rgbPixelArray = ImageProcessingUtils.YUY2PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+
+            var file = await Windows.Storage.ApplicationData.Current.LocalFolder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
+            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                Guid BitmapEncoderGuid = BitmapEncoder.JpegEncoderId;
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoderGuid, stream);
+
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
+                                    (uint)width,
+                                    (uint)height,
+                                    96.0,
+                                    96.0,
+                                    rgbPixelArray);
+                await encoder.FlushAsync();
+            }
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="yuvPixelArray"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        public static BitmapImage YUY2PixelArrayToBitmapImage(byte[] yuvPixelArray, int width, int height)
+        {
+            BitmapImage bitmapImage = null;
+            byte[] rgbPixelArray = ImageProcessingUtils.YUY2PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+
+            if (rgbPixelArray != null)
+            {
+                bitmapImage = new BitmapImage();
+
+                InMemoryRandomAccessStream stream = new InMemoryRandomAccessStream();
+                stream.AsStreamForWrite().Write(rgbPixelArray, 0, rgbPixelArray.Length);
+                stream.Seek(0);
+
+                try
+                {
+                    bitmapImage.SetSource(stream);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    bitmapImage = null;
+                }
+            }
+
+            return bitmapImage;
         }
 
         private static byte Clip(byte value, byte min = 0, byte max = 255)

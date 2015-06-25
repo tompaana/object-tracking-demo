@@ -73,8 +73,8 @@ namespace ObjectTrackingDemo
                 System.Diagnostics.Debug.WriteLine(ex);
             }
 
-            Utils utils = new Utils();
-            utils.ResolveScreenResolution(out _screenResolutionX, out _screenResolutionY);
+            DisplayUtils displayUtils = new DisplayUtils();
+            displayUtils.ResolveScreenResolution(out _screenResolutionX, out _screenResolutionY);
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -356,9 +356,9 @@ namespace ObjectTrackingDemo
 
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
                 {
-                    WriteableBitmap bitmap = Utils.GetRecordVideoFormat(_videoEngine.MediaCapture).Equals("YUY2") ? 
-                                             await Utils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, width, height) :
-                                             await Utils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, width, height);
+                    WriteableBitmap bitmap = CameraUtils.ResolveRecordingVideoFormat(_videoEngine.MediaCapture).Equals("YUY2") ? 
+                        await ImageProcessingUtils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, width, height) :
+                        await ImageProcessingUtils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, width, height);
 
                     if (bitmap != null)
                     {
@@ -399,9 +399,9 @@ namespace ObjectTrackingDemo
         {
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                WriteableBitmap bitmap = Utils.GetRecordVideoFormat(_videoEngine.MediaCapture).Equals("YUY2") ?
-                                         await Utils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight) :
-                                         await Utils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight);
+                WriteableBitmap bitmap = CameraUtils.ResolveRecordingVideoFormat(_videoEngine.MediaCapture).Equals("YUY2") ?
+                    await ImageProcessingUtils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight) :
+                    await ImageProcessingUtils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight);
 
                 if (bitmap != null)
                 {

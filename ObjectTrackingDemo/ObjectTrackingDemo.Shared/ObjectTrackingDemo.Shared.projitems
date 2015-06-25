@@ -22,6 +22,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)ControlBar.xaml.cs">
       <DependentUpon>ControlBar.xaml</DependentUpon>
     </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)DisplayUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VideoEffectMessenger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ImageProcessingUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)MainPage.xaml.cs">
@@ -29,7 +30,7 @@
     </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Settings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)StateManager.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Utils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CameraUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VideoEngine.cs" />
   </ItemGroup>
   <ItemGroup>
