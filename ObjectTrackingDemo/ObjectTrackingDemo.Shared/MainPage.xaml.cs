@@ -197,9 +197,13 @@ namespace ObjectTrackingDemo
 
             rectangle.Width = objectDetails.width * scaleX;
             rectangle.Height = objectDetails.height * scaleY;
-
+#if WINDOWS_PHONE_APP
             rectangleTransform.X = objectDetails.centerX * scaleX - context.ActualWidth / 2;
             rectangleTransform.Y = objectDetails.centerY * scaleY - context.ActualHeight / 2;
+#else
+            rectangleTransform.X = (objectDetails.centerX - _videoEngine.ResolutionWidth / 2) * scaleX;
+            rectangleTransform.Y = (objectDetails.centerY - _videoEngine.ResolutionHeight / 2) * scaleY;
+#endif
         }
 
         /// <summary>
