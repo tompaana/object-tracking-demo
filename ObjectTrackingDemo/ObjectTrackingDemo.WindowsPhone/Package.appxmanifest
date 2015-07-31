@@ -38,8 +38,8 @@
     <Extension Category="windows.activatableClass.inProcessServer">
       <InProcessServer>
         <Path>VideoEffect.WindowsPhone.dll</Path>
-        <ActivatableClass ActivatableClassId="ObjectFinderEffectTransform.ObjectFinderEffectEffect" ThreadingModel="both" />
-        <ActivatableClass ActivatableClassId="BufferEffect.BufferEffect" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="RealtimeTransform.RealtimeTransform" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="BufferTransform.BufferTransform" ThreadingModel="both" />
       </InProcessServer>
     </Extension>
   </Extensions>

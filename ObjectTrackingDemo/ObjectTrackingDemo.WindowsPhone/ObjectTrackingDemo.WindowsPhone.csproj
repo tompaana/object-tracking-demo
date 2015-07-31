@@ -93,9 +93,9 @@
     <Content Include="Assets\EffectIcon.png" />
     <Content Include="Assets\FlashIcon.png" />
     <Content Include="Assets\HideIcon.png" />
-    <Content Include="Assets\hsv.png" />
+    <Content Include="Assets\HsvColorMap.png" />
     <Content Include="Assets\Logo.scale-240.png" />
-    <Content Include="Assets\settings.png" />
+    <Content Include="Assets\SettingsIcon.png" />
     <Content Include="Assets\SmallLogo.scale-240.png" />
     <Content Include="Assets\SplashScreen.scale-240.png" />
     <Content Include="Assets\Square71x71Logo.scale-240.png" />

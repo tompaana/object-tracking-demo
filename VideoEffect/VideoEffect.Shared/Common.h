@@ -12,8 +12,7 @@ struct D2D_POINT_2U;
 
 // Constants
 const double Pi = 3.14159265359;
-const BYTE SelectedPixelValue = 0xff;
-const float RelativeObjectSizeThreshold = 0.025f; // Size relative to view, e.g. 0.05f -> 5 %
+const float RelativeObjectSizeThreshold = 0.02f; // Size relative to view, e.g. 0.05f -> 5 %
 
 
 // Video FOURCC codes.
@@ -25,45 +24,27 @@ const DWORD FOURCC_NV12 = '21VN';
 // Static array of media types (preferred and accepted).
 const GUID g_MediaSubtypes[] =
 {
-	MFVideoFormat_NV12,
-	MFVideoFormat_YUY2,
-	MFVideoFormat_UYVY
+    MFVideoFormat_NV12,
+    MFVideoFormat_YUY2,
+    MFVideoFormat_UYVY
 };
 
 
 template <typename T>
 inline T clamp(const T& val, const T& minVal, const T& maxVal)
 {
-	return (val < minVal ? minVal : (val > maxVal ? maxVal : val));
+    return (val < minVal ? minVal : (val > maxVal ? maxVal : val));
 }
 
 
 template <class T> void SafeRelease(T **ppT)
 {
-	if (*ppT)
-	{
-		(*ppT)->Release();
-		*ppT = NULL;
-	}
+    if (*ppT)
+    {
+        (*ppT)->Release();
+        *ppT = NULL;
+    }
 }
-
-
-//-------------------------------------------------------------------
-// Function pointer for the function that transforms the image.
-//-------------------------------------------------------------------
-typedef void(*IMAGE_TRANSFORM_FUNCTION)(
-	ObjectDetails&			objectDetails,
-	const float*            pTargetYUV,
-	const BYTE&             threshold,
-    const bool&             dimmFilteredPixels,
-	const D2D_RECT_U&       rcDest,          // Destination rectangle for the transformation.
-	BYTE*                   pDest,           // Destination buffer.
-	LONG                    lDestStride,     // Destination stride.
-	const BYTE*             pSrc,            // Source buffer.
-	LONG                    lSrcStride,      // Source stride.
-	DWORD                   dwWidthInPixels, // Image width in pixels.
-	DWORD                   dwHeightInPixels // Image height in pixels.
-	);
 
 
 typedef std::vector<D2D_POINT_2U> ConvexHull;
@@ -78,14 +59,27 @@ typedef std::vector<D2D_POINT_2U> ConvexHull;
 // Triggered
 // PostProcess: Triggering has happened, this will read buffer and pass it forward
 //-------------------------------------------------------------------
-
 enum VideoEffectState
 {
-	Idle = 0,
-	Locking = 1,
-	Locked = 2,
-	Triggered = 3,
-	PostProcess = 4
+    Idle = 0,
+    Locking = 1,
+    Locked = 2,
+    Triggered = 3,
+    PostProcess = 4
+};
+
+
+//-------------------------------------------------------------------
+// Mode
+//
+// Note: These has to be in sync with the managed side!
+//-------------------------------------------------------------------
+enum Mode
+{
+    ChromaFilter = 0,
+    EdgeDetection = 1,
+    ChromaDelta = 2,
+    GaussianFilter = 3
 };
 
 
@@ -97,20 +91,20 @@ enum VideoEffectState
 template<class T>
 void DeletePointerVector(std::vector<T*> **pPointerVector)
 {
-	if (pPointerVector && *pPointerVector)
-	{
-		int size = (*pPointerVector)->size();
+    if (pPointerVector && *pPointerVector)
+    {
+        int size = (*pPointerVector)->size();
 
-		while (size > 0)
-		{
-			delete (*pPointerVector)->at(size - 1);
-			(*pPointerVector)->pop_back();
-			size = (*pPointerVector)->size();
-		}
+        while (size > 0)
+        {
+            delete (*pPointerVector)->at(size - 1);
+            (*pPointerVector)->pop_back();
+            size = (*pPointerVector)->size();
+        }
 
-		delete *pPointerVector;
-		*pPointerVector = NULL;
-	}
+        delete *pPointerVector;
+        *pPointerVector = NULL;
+    }
 }
 
 
@@ -122,14 +116,14 @@ void DeletePointerVector(std::vector<T*> **pPointerVector)
 template<class T>
 void DeletePointerVector(std::vector<T*> &pointerVector)
 {
-	int size = pointerVector.size();
+    int size = pointerVector.size();
 
-	while (size > 0)
-	{
-		delete pointerVector.at(size - 1);
-		pointerVector.pop_back();
-		size = pointerVector.size();
-	}
+    while (size > 0)
+    {
+        delete pointerVector.at(size - 1);
+        pointerVector.pop_back();
+        size = pointerVector.size();
+    }
 }
 
 

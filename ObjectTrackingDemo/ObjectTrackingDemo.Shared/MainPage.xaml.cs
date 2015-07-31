@@ -45,8 +45,6 @@ namespace ObjectTrackingDemo
         private Timer _hideCapturePhotoImageTimer;
         private Timer _updateInfoTextTimer;
         private Point _viewFinderCanvasTappedPoint;
-        private double _screenResolutionX;
-        private double _screenResolutionY;
 
         public MainPage()
         {
@@ -55,8 +53,10 @@ namespace ObjectTrackingDemo
             controlBar.HideButtonClicked += OnHideButtonClicked;
             controlBar.ToggleEffectButtonClicked += OnToggleEffectButtonClickedAsync;
             controlBar.ToggleFlashButtonClicked += OnToggleFlashButtonClicked;
+            controlBar.SettingsButtonClicked += OnSettingsButtonClicked;
 
             _videoEngine = VideoEngine.Instance;
+
             colorPickerControl.CurrentColor = Settings.DefaultTargetColor;
             thresholdSlider.Value = 0;
 
@@ -73,9 +73,6 @@ namespace ObjectTrackingDemo
             {
                 System.Diagnostics.Debug.WriteLine(ex);
             }
-
-            DisplayUtils displayUtils = new DisplayUtils();
-            displayUtils.ResolveScreenResolution(out _screenResolutionX, out _screenResolutionY);
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -85,20 +82,20 @@ namespace ObjectTrackingDemo
             _actionQueue = new ActionQueue();
             _actionQueue.ExecuteIntervalInMilliseconds = 500;
 
-            ((App)Application.Current)._settings.Load();
-            await _videoEngine.InitializeAsync();
-            captureElement.Source = _videoEngine.MediaCapture;
+            App.Settings.Load();
 
+            await InitializeAndStartVideoEngineAsync();
 
-            await _videoEngine.StartAsync();
-            
-            SetColor(((App)Application.Current)._settings.TargetColor, false);
-            SetThreshold(((App)Application.Current)._settings.Threshold);
-            SetFlash(((App)Application.Current)._settings.Flash, false);
+            SetColor(App.Settings.TargetColor, false);
+            SetThreshold(App.Settings.Threshold);
+            SetFlash(App.Settings.Flash, false);
 
             controlBar.IsEffectOn = _videoEngine.EffectSet;
 
             colorPickerControl.ColorChanged += OnColorPickerControlColorChanged;
+            settingsPanelControl.ModeChanged += _videoEngine.OnModeChanged;
+            settingsPanelControl.IsoChanged += _videoEngine.OnIsoSettingsChangedAsync;
+            settingsPanelControl.ExposureChanged += _videoEngine.OnExposureSettingsChangedAsync;
             _videoEngine.StateManager.StateChanged += OnEffectStateChangedAsync;
             _videoEngine.ShowMessageRequest += OnVideoEngineShowMessageRequestAsync;
             _videoEngine.Messenger.FrameCaptured += OnFrameCapturedAsync;
@@ -113,9 +110,12 @@ namespace ObjectTrackingDemo
         {
             _videoEngine.Torch = false;
             _actionQueue.Dispose();
-            ((App)Application.Current)._settings.Save();
+            App.Settings.Save();
 
             colorPickerControl.ColorChanged -= OnColorPickerControlColorChanged;
+            settingsPanelControl.ModeChanged -= _videoEngine.OnModeChanged;
+            settingsPanelControl.IsoChanged -= _videoEngine.OnIsoSettingsChangedAsync;
+            settingsPanelControl.ExposureChanged -= _videoEngine.OnExposureSettingsChangedAsync;
             _videoEngine.StateManager.StateChanged -= OnEffectStateChangedAsync;
             _videoEngine.ShowMessageRequest -= OnVideoEngineShowMessageRequestAsync;
             _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
@@ -130,6 +130,32 @@ namespace ObjectTrackingDemo
         }
 
         /// <summary>
+        /// Initializes and starts the video engine.
+        /// </summary>
+        /// <returns>True, if successful.</returns>
+        private async Task<bool> InitializeAndStartVideoEngineAsync()
+        {
+            bool success = await _videoEngine.InitializeAsync();
+
+            if (success)
+            {
+                captureElement.Source = _videoEngine.MediaCapture;
+
+                _videoEngine.Mode = App.Settings.Mode;
+                App.Settings.SupportedIsoSpeedPresets = _videoEngine.SupportedIsoSpeedPresets;
+                await _videoEngine.SetIsoSpeedAsync(App.Settings.IsoSpeedPreset);
+                await _videoEngine.SetExposureAsync(App.Settings.Exposure);
+
+                success = await _videoEngine.StartAsync();
+            }
+
+            controlBar.FlashButtonVisibility = _videoEngine.IsTorchSupported
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            return success;
+        }
+
+        /// <summary>
         /// Sets the new target color.
         /// </summary>
         /// <param name="newColor">The new color.</param>
@@ -137,7 +163,7 @@ namespace ObjectTrackingDemo
         private void SetColor(Color newColor, bool saveSettings = true)
         {
             colorPickerControl.CurrentColor = newColor;
-            ((App)Application.Current)._settings.TargetColor = newColor;
+            App.Settings.TargetColor = newColor;
 
             if (colorPickerControl.Visibility == Visibility.Visible)
             {
@@ -145,11 +171,11 @@ namespace ObjectTrackingDemo
             }
 
             byte[] yuv = ImageProcessingUtils.RGBToYUV(newColor.R, newColor.G, newColor.B);
-            _videoEngine.SetYUVAsync(yuv);
+            _videoEngine.SetYuv(yuv);
 
             if (saveSettings)
             {
-                ((App)Application.Current)._settings.Save();
+                App.Settings.Save();
             }
         }
 
@@ -170,13 +196,13 @@ namespace ObjectTrackingDemo
         private void SetFlash(bool enabled, bool saveSettings = true)
         {
             _videoEngine.Flash = _videoEngine.Torch = enabled;
-            ((App)Application.Current)._settings.Flash = ((App)Application.Current)._settings.Torch = _videoEngine.Torch;
+            App.Settings.Flash = App.Settings.Torch = _videoEngine.Torch;
 
             controlBar.IsFlashOn = _videoEngine.Torch;
 
             if (saveSettings)
             {
-                ((App)Application.Current)._settings.Save();
+                App.Settings.Save();
             }
         }
 
@@ -274,9 +300,7 @@ namespace ObjectTrackingDemo
                 _actionQueue = new ActionQueue();
                 _actionQueue.ExecuteIntervalInMilliseconds = 500;
 
-                await _videoEngine.InitializeAsync();
-                captureElement.Source = _videoEngine.MediaCapture;
-                await _videoEngine.StartAsync();
+                await InitializeAndStartVideoEngineAsync();
 
                 controlBar.IsEffectOn = _videoEngine.EffectSet;
 
@@ -289,7 +313,7 @@ namespace ObjectTrackingDemo
                 _actionQueue.Dispose();
                 _actionQueue = null;
 
-                ((App)Application.Current)._settings.Save();
+                App.Settings.Save();
 
                 _videoEngine.StateManager.StateChanged -= OnEffectStateChangedAsync;
                 _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
@@ -312,58 +336,58 @@ namespace ObjectTrackingDemo
 #else
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
 #endif
+            {
+                stateTextBlock.Text = "State: " + newState.ToString();
+
+                /*if (newState.Equals("Locked") && _lockedSound != null)
                 {
-                    stateTextBlock.Text = "State: " + newState.ToString();
+                    _lockedSound.Play();
+                }*/
 
-                    /*if (newState.Equals("Locked") && _lockedSound != null)
-                    {
-                        _lockedSound.Play();
-                    }*/
+                switch (newState)
+                {
+                    case VideoEffectState.Idle:
+                        progressBar.Visibility = Visibility.Visible;
+                        controlBar.IsEffectOn = false;
+                        lockedRectangle.Visibility = Visibility.Collapsed;
+                        progressBar.Visibility = Visibility.Collapsed;
+                        break;
 
-                    switch (newState)
-                    {
-                        case VideoEffectState.Idle:
-                            progressBar.Visibility = Visibility.Visible;
-                            controlBar.IsEffectOn = false;
-                            lockedRectangle.Visibility = Visibility.Collapsed;
-                            progressBar.Visibility = Visibility.Collapsed;
-                            break;
+                    case VideoEffectState.Locking:
+                        lockedRectangle.Visibility = Visibility.Collapsed;
+                        progressBar.Visibility = Visibility.Visible;
+                        break;
 
-                        case VideoEffectState.Locking:
-                            lockedRectangle.Visibility = Visibility.Collapsed;
-                            progressBar.Visibility = Visibility.Visible;
-                            break;
+                    case VideoEffectState.Locked:
+                        if (lockedRectangle.Visibility == Visibility.Collapsed)
+                        {
+                            SetRectangleSizeAndPositionBasedOnObjectDetails(
+                                ref lockedRectangle, ref lockedRectangleTranslateTransform,
+                                captureElement, _videoEngine.Messenger.LockedRect);
 
-                        case VideoEffectState.Locked:
-                            if (lockedRectangle.Visibility == Visibility.Collapsed)
-                            {
-                                SetRectangleSizeAndPositionBasedOnObjectDetails(
-                                    ref lockedRectangle, ref lockedRectangleTranslateTransform,
-                                    captureElement, _videoEngine.Messenger.LockedRect);
+                            lockedRectangle.Visibility = Visibility.Visible;
+                        }
 
-                                lockedRectangle.Visibility = Visibility.Visible;
-                            }
+                        progressBar.Visibility = Visibility.Collapsed;
+                        break;
 
-                            progressBar.Visibility = Visibility.Collapsed;
-                            break;
-
-                        case VideoEffectState.Triggered:
+                    case VideoEffectState.Triggered:
 #if WINDOWS_APP
-                            await _videoEngine.MediaCapture.AddEffectAsync(_videoEngine.RecordMediaStreamType, VideoEngine.BufferEffectActivationId, _videoEngine.Properties);
+                            await _videoEngine.MediaCapture.AddEffectAsync(_videoEngine.RecordMediaStreamType, VideoEngine.BufferTransformActivationId, _videoEngine.Properties);
 #endif // WINDOWS_APP
-                            lockedRectangle.Visibility = Visibility.Collapsed;
-                            progressBar.Visibility = Visibility.Visible;
-                            break;
+                        lockedRectangle.Visibility = Visibility.Collapsed;
+                        progressBar.Visibility = Visibility.Visible;
+                        break;
 
-                        case VideoEffectState.PostProcess:
-                            progressBar.Visibility = Visibility.Visible;
-                            break;
+                    case VideoEffectState.PostProcess:
+                        progressBar.Visibility = Visibility.Visible;
+                        break;
 
-                        default:
-                            break;
-                    }
+                    default:
+                        break;
+                }
 
-                });
+            });
         }
 
         private async void OnFrameCapturedAsync(byte[] pixelArray, int frameWidth, int frameHeight, int frameId)
@@ -372,36 +396,36 @@ namespace ObjectTrackingDemo
             System.Diagnostics.Debug.WriteLine("OnFrameCapturedAsync");
 
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                WriteableBitmap bitmap = await PixelArrayToWriteableBitmapAsync(pixelArray, frameWidth, frameHeight);
+
+                if (bitmap != null)
                 {
-                    WriteableBitmap bitmap = await PixelArrayToWriteableBitmapAsync(pixelArray, frameWidth, frameHeight);
+                    capturedPhotoImage.Source = bitmap;
+                    bitmap.Invalidate();
+                    capturedPhotoImage.Visibility = Visibility.Visible;
 
-                    if (bitmap != null)
+                    if (frameId == ColorPickFrameRequestId)
                     {
-                        capturedPhotoImage.Source = bitmap;
-                        bitmap.Invalidate();
-                        capturedPhotoImage.Visibility = Visibility.Visible;
+                        int scaledWidth = (int)(_videoEngine.ResolutionWidth * viewfinderCanvas.ActualHeight / _videoEngine.ResolutionHeight);
+                        int pointX = (int)(((_viewFinderCanvasTappedPoint.X - (viewfinderCanvas.ActualWidth - scaledWidth) / 2) / scaledWidth) * frameWidth);
+                        int pointY = (int)((_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * frameHeight);
 
-                        if (frameId == ColorPickFrameRequestId)
-                        {
-                            int scaledWidth = (int)(_videoEngine.ResolutionWidth * viewfinderCanvas.ActualHeight / _videoEngine.ResolutionHeight);
-                            int pointX = (int)(((_viewFinderCanvasTappedPoint.X - (viewfinderCanvas.ActualWidth - scaledWidth) / 2) / scaledWidth) * frameWidth);
-                            int pointY = (int)((_viewFinderCanvasTappedPoint.Y / viewfinderCanvas.ActualHeight) * frameHeight);
-                                                      
-                            SetColor(ImageProcessingUtils.GetColorAtPoint(
-                                bitmap, (uint)frameWidth, (uint)frameHeight, new Point() { X = pointX, Y = pointY }));
-                        }
-
-                        if (_hideCapturePhotoImageTimer != null)
-                        {
-                            _hideCapturePhotoImageTimer.Dispose();
-                            _hideCapturePhotoImageTimer = null;
-                        }
-
-                        _hideCapturePhotoImageTimer = new Timer(HideCapturedPhotoImageAsync, null, 8000, Timeout.Infinite);
+                        SetColor(ImageProcessingUtils.GetColorAtPoint(
+                            bitmap, (uint)frameWidth, (uint)frameHeight, new Point() { X = pointX, Y = pointY }));
                     }
 
-                    _videoEngine.Messenger.FrameCaptured += OnFrameCapturedAsync;
-                });
+                    if (_hideCapturePhotoImageTimer != null)
+                    {
+                        _hideCapturePhotoImageTimer.Dispose();
+                        _hideCapturePhotoImageTimer = null;
+                    }
+
+                    _hideCapturePhotoImageTimer = new Timer(HideCapturedPhotoImageAsync, null, 8000, Timeout.Infinite);
+                }
+
+                _videoEngine.Messenger.FrameCaptured += OnFrameCapturedAsync;
+            });
         }
 
         private async void OnPostProcessCompleteAsync(
@@ -417,7 +441,7 @@ namespace ObjectTrackingDemo
                     processingResultImage.Source = bitmap;
                     bitmap.Invalidate();
 
-                    if (fromObjectDetails.centerX > toObjectDetails.centerX) // TODO This is wrong, but the problem is in BufferEffect
+                    if (fromObjectDetails.centerX > toObjectDetails.centerX) // TODO This is wrong, but the problem is in BufferTransform
                     {
                         imageLeftSideLabel.Text = "1";
                         imageRightSideLabel.Text = "2";
@@ -460,20 +484,44 @@ namespace ObjectTrackingDemo
                 _updateInfoTextTimer = null;
             }
 
-            infoTextBlock.Text = "Hello there!";
+            infoTextBlock.Text = "";
 
             if (_videoEngine.EffectSet)
             {
-                await _videoEngine.SetThresholdAsync((float)thresholdSlider.Value);
+                _videoEngine.SetThreshold((float)thresholdSlider.Value);
                 _updateInfoTextTimer = new Timer(UpdateInfoTextAsync, null, 1000, 1000);
             }
 
-            ((App)Application.Current)._settings.Save();
+            App.Settings.Save();
         }
 
         private void OnToggleFlashButtonClicked(object sender, RoutedEventArgs e)
         {
             SetFlash(!_videoEngine.Torch);
+        }
+
+        private void OnSettingsButtonClicked(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            if (settingsPanelControl.Visibility == Visibility.Visible)
+            {
+                settingsPanelControl.Hide();
+            }
+            else
+            {
+                settingsPanelControl.Show();
+            }
+        }
+
+        private void OnColorPickerButtonClicked(object sender, RoutedEventArgs e)
+        {
+            if (settingsPanelControl.Visibility == Visibility.Visible)
+            {
+                settingsPanelControl.Hide();
+                return;
+            }
+
+            colorPickerControl.PreviewColor = App.Settings.TargetColor;
+            colorPickerControl.Visibility = Visibility.Visible;
         }
 
         private void OnSliderValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -483,16 +531,16 @@ namespace ObjectTrackingDemo
             if (_videoEngine != null && _videoEngine.EffectSet)
             {
                 _actionQueue.Execute(async () =>
+                {
+                    await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
-                            {
-                                await _videoEngine.SetThresholdAsync((float)newThreshold);
-                            });
-                    }
+                        _videoEngine.SetThreshold((float)newThreshold);
+                    });
+                }
                  );
             }
 
-            ((App)Application.Current)._settings.Threshold = newThreshold;
+            App.Settings.Threshold = newThreshold;
             thresholdTextBlock.Text = "Threshold: " + newThreshold;
         }
 
@@ -510,14 +558,19 @@ namespace ObjectTrackingDemo
                 return;
             }
 
+            if (settingsPanelControl.Visibility == Visibility.Visible)
+            {
+                settingsPanelControl.Hide();
+                return;
+            }
+
             _viewFinderCanvasTappedPoint = e.GetPosition(viewfinderCanvas);
-            _videoEngine.Messenger.RequestFrame(ColorPickFrameRequestId);
+            _videoEngine.Messenger.FrameRequestId = ColorPickFrameRequestId;
         }
 
-        private void OnColorPickerButtonClicked(object sender, RoutedEventArgs e)
+        private void OnProcessingResultGridTapped(object sender, Windows.UI.Xaml.Input.TappedRoutedEventArgs e)
         {
-            colorPickerControl.PreviewColor = ((App)Application.Current)._settings.TargetColor;
-            colorPickerControl.Visibility = Visibility.Visible;
+            processingResultGrid.Visibility = Windows.UI.Xaml.Visibility.Collapsed;
         }
 
         private async void OnVideoEngineShowMessageRequestAsync(object sender, string message)
@@ -526,11 +579,6 @@ namespace ObjectTrackingDemo
             {
                 infoTextBlock.Text = message;
             });
-        }
-
-        private void OnProcessingResultGridTapped(object sender, Windows.UI.Xaml.Input.TappedRoutedEventArgs e)
-        {
-            processingResultGrid.Visibility = Windows.UI.Xaml.Visibility.Collapsed;
         }
 
         #endregion

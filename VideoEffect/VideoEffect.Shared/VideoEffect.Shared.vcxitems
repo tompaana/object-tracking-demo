@@ -14,35 +14,49 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)AbstractEffect.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)BufferEffect.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ObjectFinderEffect.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ImageAnalyzer.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessingUtils.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\AbstractEffect.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\ChromaDeltaEffect.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\ChromaFilterEffect.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\EdgeDetectionEffect.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageAnalyzer.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingUtils.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Interop\InteropUtils.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Settings.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\AbstractTransform.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)AbstractEffect.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)BufferEffect.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)BufferEffect_h.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)BufferLock.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Common.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)MessengerInterface.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ObjectFinderEffect.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ObjectFinderEffectTransform_h.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ImageAnalyzer.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessingUtils.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ObjectDetails.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\AbstractEffect.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\ChromaDeltaEffect.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\ChromaFilterEffect.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\EdgeDetectionEffect.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageAnalyzer.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingCommon.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingUtils.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ObjectDetails.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Interop\InteropUtils.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Interop\MessengerInterface.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Settings.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\AbstractTransform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform_h.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform_h.h" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="$(MSBuildThisFileDirectory)BufferEffect.idl" />
-    <Midl Include="$(MSBuildThisFileDirectory)ObjectFinderEffectTransform.idl" />
+    <Midl Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.idl" />
+    <Midl Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.idl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.def" />
   </ItemGroup>
 </Project>

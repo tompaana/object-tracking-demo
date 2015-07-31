@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Windows.Devices.Enumeration;
 using Windows.Foundation.Collections;
@@ -11,28 +10,42 @@ using Windows.Media.MediaProperties;
 using Windows.Storage.Streams;
 using VideoEffect;
 
+#if WINDOWS_PHONE_APP
+using Windows.Devices.Sensors;
+#endif
+
 namespace ObjectTrackingDemo
 {
+    public enum Mode
+    {
+        ChromaFilter = 0,
+        EdgeDetection = 1,
+        ChromaDelta = 2,
+        //GaussianFilter = 3
+    };
+
     /// <summary>
     /// This class manages the device camera and the native effects.
     /// </summary>
     public class VideoEngine
     {
         // Constants
-        public const string EffectActivationId = "ObjectFinderEffectTransform.ObjectFinderEffectEffect";
-        public const string BufferEffectActivationId = "BufferEffect.BufferEffect";
+        public const string RealtimeTransformActivationId = "RealtimeTransform.RealtimeTransform";
+        public const string BufferTransformActivationId = "BufferTransform.BufferTransform";
         public readonly MediaStreamType PreviewMediaStreamType = MediaStreamType.VideoPreview;
         public readonly MediaStreamType RecordMediaStreamType = MediaStreamType.VideoRecord;
+        public const int ExposureAutoValue = -1;
 
-        private const string PropertyKeyThreshold = "Threshold";
-        private const string PropertyKeyY = "PropertyY";
-        private const string PropertyKeyU = "PropertyU";
-        private const string PropertyKeyV = "PropertyV";
         private const string propertyKeyCommunication = "Communication";
         private const int MinimumThreshold = 0;
         private const int MaximumThreshold = 255;
         private const uint PreviewFrameRate = 30;
+
+#if WINDOWS_PHONE_APP
         private const uint MaximumVideoWidth = 1280;
+#else
+        private const uint MaximumVideoWidth = 1280;
+#endif
 
         public event EventHandler<string> ShowMessageRequest;
 
@@ -42,7 +55,13 @@ namespace ObjectTrackingDemo
         private DeviceInformationCollection _deviceInformationCollection;
         private VideoEncodingProperties _hfrVideoEncodingProperties;
         private float[] _yuv;
-        private bool _changingThreshold;
+        private int _exposureStep;
+
+#if WINDOWS_PHONE_APP
+        private LightSensor _lightSensor = LightSensor.GetDefault();
+        List<double> _lightMeasurements = new List<double>();
+        double _lastLightMeasurement;
+#endif
 
         private static VideoEngine _instance;
         /// <summary>
@@ -81,30 +100,40 @@ namespace ObjectTrackingDemo
             private set;
         }
 
+        public bool IsFlashSupported
+        {
+            get
+            {
+                return (_videoDeviceController != null && _videoDeviceController.FlashControl.Supported);
+            }
+        }
         public bool Flash
         {
             get
             {
-                if (_videoDeviceController != null)
+                bool enabled = false;
+
+                if (IsFlashSupported)
                 {
-                    return _videoDeviceController.FlashControl.Enabled;
+                    enabled = _videoDeviceController.FlashControl.Enabled;
                 }
 
-                return false;
+                return enabled;
             }
             set
             {
-                if (_videoDeviceController != null && _videoDeviceController.FlashControl.Supported)
+                if (IsFlashSupported)
                 {
-                    try
-                    {
-                        _videoDeviceController.FlashControl.Enabled = value;
-                    }
-                    catch (Exception e)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Cannot change flash settings: " + e.ToString());
-                    }
+                     _videoDeviceController.FlashControl.Enabled = value;
                 }
+            }
+        }
+
+        public bool IsTorchSupported
+        {
+            get
+            {
+                return (_videoDeviceController != null && _videoDeviceController.TorchControl.Supported);
             }
         }
 
@@ -112,34 +141,139 @@ namespace ObjectTrackingDemo
         {
             get
             {
-                if (_videoDeviceController != null)
+                bool enabled = false;
+
+                if (IsTorchSupported)
                 {
-                    try
-                    {
-                        return _videoDeviceController.TorchControl.Enabled;
-                    }
-                    catch (Exception)
-                    {
-                        return false;
-                    }
+                    enabled = _videoDeviceController.TorchControl.Enabled;
                 }
 
-                return false;
+                return enabled;
             }
             set
             {
-                if (_videoDeviceController != null && _videoDeviceController.TorchControl.Supported)
+                if (IsTorchSupported)
                 {
-                    try
-                    {
-                        _videoDeviceController.TorchControl.Enabled = value;
-                    }
-                    catch (Exception e)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Cannot change torch settings: " + e.ToString());
-                    }
+                    _videoDeviceController.TorchControl.Enabled = value;
                 }
             }
+        }
+
+        public Mode Mode
+        {
+            get
+            {
+                return (Mode)Messenger.ModeSetting;
+            }
+            set
+            {
+                if ((Mode)Messenger.ModeSetting != value)
+                {
+                    Messenger.ModeSetting = (int)value;
+                }
+            }
+        }
+
+        public bool IsIsoSupported
+        {
+            get
+            {
+                return (_videoDeviceController != null && _videoDeviceController.IsoSpeedControl.Supported);
+            }
+        }
+
+        public IReadOnlyList<IsoSpeedPreset> SupportedIsoSpeedPresets
+        {
+            get
+            {
+                IReadOnlyList<IsoSpeedPreset> isoSpeedPresets = null;
+
+                if (IsIsoSupported)
+                {
+                    isoSpeedPresets = _videoDeviceController.IsoSpeedControl.SupportedPresets;
+                }
+
+                return isoSpeedPresets;
+            }
+        }
+
+        public IsoSpeedPreset IsoSpeedPreset
+        {
+            get
+            {
+                IsoSpeedPreset isoSpeed = IsoSpeedPreset.Auto;
+
+                if (IsIsoSupported)
+                {
+                    isoSpeed = _videoDeviceController.IsoSpeedControl.Preset;
+                }
+
+                return isoSpeed;
+            }
+        }
+
+        public bool IsExposureSupported
+        {
+            get
+            {
+                return (_videoDeviceController != null && _videoDeviceController.ExposureControl.Supported);
+            }
+        }
+
+        public bool IsAutoExposureOn
+        {
+            get;
+            private set;
+        }
+
+        public int ExposureMinStep
+        {
+            get
+            {
+                return 0;
+            }
+        }
+
+        public int ExposureMaxStep
+        {
+            get
+            {
+                int maxStep = 0;
+
+                if (IsExposureSupported)
+                {
+                    /*long maxTicks = _videoDeviceController.ExposureControl.Max.Ticks;
+                    long minTicks = _videoDeviceController.ExposureControl.Min.Ticks;
+
+                    if (minTicks > 0)
+                    {
+                        maxStep = (int)Math.Round((double)(maxTicks / minTicks), 0);
+                    }*/
+                    maxStep = 200;
+                }
+
+                return maxStep;
+            }
+        }
+
+        public int ExposureStep
+        {
+            get
+            {
+                return _exposureStep;
+            }
+        }
+
+        public int Luminance
+        {
+            get;
+            private set;
+        }
+
+        public bool IsLuminanceShown
+        {
+            get;
+            private set;
         }
 
         public bool Initialized
@@ -204,93 +338,108 @@ namespace ObjectTrackingDemo
             StateManager = new StateManager();
             Messenger = new VideoEffectMessenger(StateManager);
 
+            IsAutoExposureOn = true;
+
             _yuv = new float[3]
             {
                 128f, 128f, 128f
             };
 
+            Messenger.ThresholdSetting = 0f;
+            Messenger.TargetYuvSetting = _yuv;
+
             Properties = new PropertySet();
-            Properties[PropertyKeyThreshold] = 0f;
-            Properties[PropertyKeyY] = _yuv[0];
-            Properties[PropertyKeyU] = _yuv[1];
-            Properties[PropertyKeyV] = _yuv[2];
-            Properties[propertyKeyCommunication] = Messenger;
+            Properties[propertyKeyCommunication] = Messenger;           
 
             StateManager.StateChanged += OnStateChanged;
         }
 
         public async Task<bool> InitializeAsync()
         {
-            if (!Initialized)
+            if (Initialized)
             {
-                _deviceInformationCollection = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);                
-                _deviceInformation = null;
+                // Already intialized
+                return true;
+            }
 
-                if (_deviceInformationCollection.Count != 0)
+            _deviceInformationCollection = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
+
+            // Find the back camera
+            _deviceInformation =
+                (from camera in _deviceInformationCollection
+                 where camera.EnclosureLocation != null
+                    && camera.EnclosureLocation.Panel == Windows.Devices.Enumeration.Panel.Back
+                 select camera).FirstOrDefault();
+
+            if (_deviceInformation == null && _deviceInformationCollection.Count != 0)
+            {
+                // Fallback to whatever is available (e.g. webcam on laptop)
+                _deviceInformation = _deviceInformationCollection[0];
+            }
+
+            if (_deviceInformation == null)
+            {
+                throw new Exception("No camera device found");
+            }
+
+            MediaCapture = new MediaCapture();
+            MediaCaptureInitializationSettings settings = new MediaCaptureInitializationSettings();
+            settings.StreamingCaptureMode = StreamingCaptureMode.Video;
+            settings.VideoDeviceId = _deviceInformation.Id;
+            await MediaCapture.InitializeAsync(settings);
+
+#if WINDOWS_PHONE_APP
+            _lightSensor.ReportInterval = _lightSensor.MinimumReportInterval;
+            _lightSensor.ReadingChanged += OnLightSensorReadingChangedAsync;
+#endif
+
+            _videoDeviceController = MediaCapture.VideoDeviceController;
+
+            IList<VideoEncodingProperties> listOfPropertiesWithHighestFrameRate =
+                CameraUtils.ResolveAllVideoEncodingPropertiesWithHighestFrameRate(_videoDeviceController, RecordMediaStreamType);
+
+            if (listOfPropertiesWithHighestFrameRate != null && listOfPropertiesWithHighestFrameRate.Count > 0)
+            {
+                VideoEncodingProperties selectedRecordingVideoEncodingProperties = listOfPropertiesWithHighestFrameRate.ElementAt(0);
+                uint selectedRecordingVideoWidth = selectedRecordingVideoEncodingProperties.Width;
+
+                for (int i = 1; i < listOfPropertiesWithHighestFrameRate.Count; ++i)
                 {
-                    _deviceInformation = _deviceInformationCollection[0];
-                }
+                    VideoEncodingProperties currentProperties = listOfPropertiesWithHighestFrameRate.ElementAt(i);
 
-                if (_deviceInformation != null)
-                {
-                    MediaCapture = new MediaCapture();
-                    MediaCaptureInitializationSettings settings = new MediaCaptureInitializationSettings();
-                    settings.StreamingCaptureMode = StreamingCaptureMode.Video;
-                    settings.VideoDeviceId = _deviceInformation.Id;
-                    await MediaCapture.InitializeAsync(settings);
-                }
-
-                _videoDeviceController = MediaCapture.VideoDeviceController;
-
-                IList<VideoEncodingProperties> listOfPropertiesWithHighestFrameRate =
-                    CameraUtils.ResolveAllVideoEncodingPropertiesWithHighestFrameRate(_videoDeviceController, RecordMediaStreamType);
-
-                if (listOfPropertiesWithHighestFrameRate != null && listOfPropertiesWithHighestFrameRate.Count > 0)
-                {
-                    VideoEncodingProperties selectedRecordingVideoEncodingProperties = listOfPropertiesWithHighestFrameRate.ElementAt(0);
-                    uint selectedRecordingVideoWidth = selectedRecordingVideoEncodingProperties.Width;
-
-                    for (int i = 1; i < listOfPropertiesWithHighestFrameRate.Count; ++i)
+                    if (selectedRecordingVideoWidth > MaximumVideoWidth ||
+                        (currentProperties.Width <= MaximumVideoWidth && currentProperties.Width > selectedRecordingVideoWidth))
                     {
-                        VideoEncodingProperties currentProperties = listOfPropertiesWithHighestFrameRate.ElementAt(i);
-
-                        if (selectedRecordingVideoWidth > MaximumVideoWidth ||
-                            (currentProperties.Width <= MaximumVideoWidth && currentProperties.Width > selectedRecordingVideoWidth))
-                        {
-                            selectedRecordingVideoEncodingProperties = currentProperties;
-                            selectedRecordingVideoWidth = selectedRecordingVideoEncodingProperties.Width;
-                        }
+                        selectedRecordingVideoEncodingProperties = currentProperties;
+                        selectedRecordingVideoWidth = selectedRecordingVideoEncodingProperties.Width;
                     }
-
-                    _hfrVideoEncodingProperties = selectedRecordingVideoEncodingProperties;
-                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(RecordMediaStreamType, selectedRecordingVideoEncodingProperties);
-
-                    VideoEncodingProperties previewVideoEncodingProperties =
-                        CameraUtils.FindVideoEncodingProperties(
-                            _videoDeviceController, PreviewMediaStreamType,
-                            PreviewFrameRate, selectedRecordingVideoWidth, selectedRecordingVideoEncodingProperties.Height);
-
-                    System.Diagnostics.Debug.WriteLine("Highest framerate for recording is "
-                        + CameraUtils.ResolveFrameRate(selectedRecordingVideoEncodingProperties)
-                        + " frames per second with selected resolution of "
-                        + selectedRecordingVideoWidth + "x" + selectedRecordingVideoEncodingProperties.Height
-                        + "\nThe preview properties for viewfinder are "
-                        + CameraUtils.ResolveFrameRate(previewVideoEncodingProperties) + " FPS and "
-                        + previewVideoEncodingProperties.Width + "x" + previewVideoEncodingProperties.Height);
-
-                    await MediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(PreviewMediaStreamType, previewVideoEncodingProperties);
                 }
 
-                Initialized = true;
+                _hfrVideoEncodingProperties = selectedRecordingVideoEncodingProperties;
+                await _videoDeviceController.SetMediaStreamPropertiesAsync(RecordMediaStreamType, selectedRecordingVideoEncodingProperties);
+
+                VideoEncodingProperties previewVideoEncodingProperties =
+                    CameraUtils.FindVideoEncodingProperties(
+                        _videoDeviceController, PreviewMediaStreamType,
+                        PreviewFrameRate, selectedRecordingVideoWidth, selectedRecordingVideoEncodingProperties.Height);
+
+                System.Diagnostics.Debug.WriteLine("Highest framerate for recording is "
+                    + CameraUtils.ResolveFrameRate(selectedRecordingVideoEncodingProperties)
+                    + " frames per second with selected resolution of "
+                    + selectedRecordingVideoWidth + "x" + selectedRecordingVideoEncodingProperties.Height
+                    + "\nThe preview properties for viewfinder are "
+                    + CameraUtils.ResolveFrameRate(previewVideoEncodingProperties) + " FPS and "
+                    + previewVideoEncodingProperties.Width + "x" + previewVideoEncodingProperties.Height);
+
+                await _videoDeviceController.SetMediaStreamPropertiesAsync(PreviewMediaStreamType, previewVideoEncodingProperties);
             }
 
-            await MediaCapture.AddEffectAsync(RecordMediaStreamType, BufferEffectActivationId, Properties);
-
-            if (MediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
+            if (_videoDeviceController.WhiteBalanceControl.Supported)
             {
-                await MediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(ColorTemperaturePreset.Fluorescent);
+                await _videoDeviceController.WhiteBalanceControl.SetPresetAsync(ColorTemperaturePreset.Fluorescent);
             }
 
+            Initialized = true;
             return Initialized;
         }
 
@@ -334,10 +483,13 @@ namespace ObjectTrackingDemo
 
                 // Get camera's resolution
                 VideoEncodingProperties resolution =
-                    (VideoEncodingProperties)MediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoRecord);
+                    (VideoEncodingProperties)_videoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoRecord);
                 ResolutionWidth = (int)resolution.Width;
                 ResolutionHeight = (int)resolution.Height;
-           
+
+                Messenger.SettingsChangedFlag = true;
+                await MediaCapture.AddEffectAsync(RecordMediaStreamType, BufferTransformActivationId, Properties);
+
                 RecordingStarted = true;
             }
 
@@ -373,25 +525,14 @@ namespace ObjectTrackingDemo
         /// Sets the target YUV values for the effect.
         /// </summary>
         /// <param name="yuv">The new target YUV.</param>
-        public async void SetYUVAsync(byte[] yuv)
+        public void SetYuv(byte[] yuv)
         {
-            if (EffectSet)
-            {
-                await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
-            }
-
-            _yuv[0] = (float)yuv[0];
-            _yuv[1] = (float)yuv[1];
-            _yuv[2] = (float)yuv[2];
-            Properties[PropertyKeyY] = _yuv[0];
-            Properties[PropertyKeyU] = _yuv[1];
-            Properties[PropertyKeyV] = _yuv[2];
-            Properties[propertyKeyCommunication] = Messenger;
-
-            if (EffectSet)
-            {
-                await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, Properties);
-            }
+            Messenger.TargetYuvSetting = new float[]
+                {
+                    (float)yuv[0],
+                    (float)yuv[1],
+                    (float)yuv[2]
+                };
         }
 
         /// <summary>
@@ -399,24 +540,138 @@ namespace ObjectTrackingDemo
         /// </summary>
         /// <param name="threshold">The new threshold value.</param>
         /// <returns>True, if successful. False otherwise.</returns>
-        public async Task<bool> SetThresholdAsync(float threshold)
+        public bool SetThreshold(float threshold)
         {
-            if (Initialized && !_changingThreshold && threshold >= MinimumThreshold && threshold <= MaximumThreshold)
+            if (Initialized && threshold >= MinimumThreshold && threshold <= MaximumThreshold)
             {
-                System.Diagnostics.Debug.WriteLine("SetThresholdAsync: " + threshold);
-                _changingThreshold = true;
-
-                await MediaCapture.ClearEffectsAsync(PreviewMediaStreamType);
-                Properties[PropertyKeyThreshold] = threshold;
-                await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, Properties);
-
-                _changingThreshold = false;
-
+                Messenger.ThresholdSetting = threshold;
                 return true;
             }
 
             return false;
         }
+
+        /// <summary>
+        /// Sets the given ISO speed.
+        /// </summary>
+        /// <param name="isoSpeedPreset"></param>
+        /// <returns>True, if successful.</returns>
+        public async Task<bool> SetIsoSpeedAsync(IsoSpeedPreset isoSpeedPreset)
+        {
+            bool success = false;
+
+            if (IsIsoSupported && isoSpeedPreset != IsoSpeedPreset)
+            {
+                await _videoDeviceController.IsoSpeedControl.SetPresetAsync(isoSpeedPreset);
+                success = true;
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Sets the given exposure value.
+        /// </summary>
+        /// <param name="exposureStep"></param>
+        /// <returns>True, if successful.</returns>
+        public async Task<bool> SetExposureAsync(int exposureStep)
+        {
+            bool success = false;
+
+            if (IsExposureSupported && _exposureStep != exposureStep)
+            {
+                _exposureStep = exposureStep;
+                TimeSpan minExposure = _videoDeviceController.ExposureControl.Min;
+                IsAutoExposureOn = false;
+
+                if (_exposureStep == -1) // Automatic exposure time
+                {
+                    IsAutoExposureOn = true;
+
+#if WINDOWS_PHONE_APP    
+                    await AdjustExposureAsync(0);
+#else
+                    await _videoDeviceController.ExposureControl.SetAutoAsync(true);
+#endif
+                }
+                else
+                {
+                    await _videoDeviceController.ExposureControl.SetAutoAsync(false);
+                    await _videoDeviceController.ExposureControl.SetValueAsync(
+                        minExposure + TimeSpan.FromTicks(minExposure.Ticks * _exposureStep));
+                }
+
+                success = true;
+            }
+
+            return success;
+        }
+
+#if WINDOWS_PHONE_APP
+        /// <summary>
+        /// Adjusts the exposure.
+        /// </summary>
+        /// <param name="average"></param>
+        /// <returns>True, if successful.</returns>
+        private async Task<bool> AdjustExposureAsync(double average)
+        {
+            bool success = false;
+
+            if (IsExposureSupported)
+            {
+                double illuminance = 0;
+                double exposureAdjusted = 0;
+                var min = _videoDeviceController.ExposureControl.Min;
+
+                double brightness = 0;
+                _videoDeviceController.Brightness.TryGetValue(out brightness);
+
+                if (average == 0 && _lightSensor != null)
+                {
+                    var reading = _lightSensor.GetCurrentReading();
+                    illuminance = reading.IlluminanceInLux;
+                }
+                else
+                {
+                    illuminance = average;
+                }
+
+                /*
+                 * 50, inside. light only from windows
+                 * 100, inside. lighs on
+                 * 500...1000, outside 
+                 */
+                if (illuminance < 1000)
+                {
+                    exposureAdjusted = 25 - (illuminance / 1000) * 25;
+                }
+                else
+                {
+                    exposureAdjusted = 0;
+                }
+
+                await _videoDeviceController.ExposureControl.SetAutoAsync(false);
+                await _videoDeviceController.ExposureControl.SetValueAsync(
+                    min + TimeSpan.FromTicks((long)((double)min.Ticks * exposureAdjusted)));
+
+                IsLuminanceShown = true;
+
+                string luminanceAndExposure =
+                    "Luminance: " + ((int)illuminance).ToString()
+                    + "\nExposure: " + ((int)exposureAdjusted).ToString();
+
+                if (ShowMessageRequest != null)
+                {
+                    ShowMessageRequest(this, luminanceAndExposure);
+                }
+
+                _lastLightMeasurement = exposureAdjusted;
+                success = true;
+            }
+
+            return success;
+        }
+#endif
 
         /// <summary>
         /// Starts/stops the effect.
@@ -433,12 +688,29 @@ namespace ObjectTrackingDemo
                 }
                 else
                 {
-                    await MediaCapture.AddEffectAsync(PreviewMediaStreamType, EffectActivationId, Properties);
+                    Messenger.SettingsChangedFlag = true;
+                    Messenger.ModeChangedFlag = true;
+                    await MediaCapture.AddEffectAsync(PreviewMediaStreamType, RealtimeTransformActivationId, Properties);
                     StateManager.State = VideoEffectState.Locking;
                 }
             }
 
             return EffectSet;
+        }
+
+        public void OnModeChanged(object sender, Mode e)
+        {
+            Messenger.ModeSetting = (int)e;
+        }
+
+        public async void OnIsoSettingsChangedAsync(object sender, IsoSpeedPreset e)
+        {
+            await SetIsoSpeedAsync(e);
+        }
+
+        public async void OnExposureSettingsChangedAsync(object sender, int e)
+        {
+            await SetExposureAsync(e);
         }
 
         private async void OnStateChanged(VideoEffectState newState, VideoEffectState oldState)
@@ -453,5 +725,30 @@ namespace ObjectTrackingDemo
                     break;
             }
         }
+
+#if WINDOWS_PHONE_APP
+        private async void OnLightSensorReadingChangedAsync(LightSensor sender, LightSensorReadingChangedEventArgs args)
+        {
+            if (IsAutoExposureOn)
+            {
+                if (_lightMeasurements.Count > 10)
+                {
+                    double average = _lightMeasurements.Average();
+                    double delta = Math.Max(average, _lastLightMeasurement) - Math.Min(average, _lastLightMeasurement);
+
+                    if (Math.Max(average, _lastLightMeasurement) / delta > 0.3)  // 30% change
+                    {
+                        await AdjustExposureAsync(average);
+                    }
+
+                    _lightMeasurements.Clear();
+                }
+                else
+                {
+                    _lightMeasurements.Add(args.Reading.IlluminanceInLux);
+                }
+            }
+        }
+#endif
     }
 }

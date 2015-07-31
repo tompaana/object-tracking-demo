@@ -17,6 +17,9 @@ namespace ObjectTrackingDemo
         private const string KeyThreshold = "Threshold";
         private const string KeyFlash = "Flash";
         private const string KeyTorch = "Torch";
+        private const string KeyMode = "Mode";
+        private const string KeyIsoSpeedPreset = "IsoSpeedPreset";
+        private const string KeyExposure = "Exposure";
 
         private ApplicationDataContainer _localSettings = ApplicationData.Current.LocalSettings;
 
@@ -43,16 +46,25 @@ namespace ObjectTrackingDemo
             get;
             set;
         }
-        public IsoSpeedPreset SelectedIso
+
+        public Mode Mode
         {
             get;
             set;
         }
-        public IReadOnlyList<IsoSpeedPreset> SupportedIsoSpeeds
+
+        public IsoSpeedPreset IsoSpeedPreset
         {
             get;
             set;
         }
+
+        public IReadOnlyList<IsoSpeedPreset> SupportedIsoSpeedPresets
+        {
+            get;
+            set;
+        }
+
         public int Exposure
         {
             get;
@@ -92,6 +104,32 @@ namespace ObjectTrackingDemo
                 Torch = (bool)_localSettings.Values[KeyTorch];
             }
 
+            if (_localSettings.Values.ContainsKey(KeyMode))
+            {
+                Mode = (Mode)Enum.Parse(typeof(Mode), (string)_localSettings.Values[KeyMode]);
+            }
+            else
+            {
+                Mode = Mode.ChromaFilter;
+            }
+
+            if (_localSettings.Values.ContainsKey(KeyIsoSpeedPreset))
+            {
+                IsoSpeedPreset = (IsoSpeedPreset)Enum.Parse(typeof(IsoSpeedPreset), (string)_localSettings.Values[KeyIsoSpeedPreset]);
+            }
+            else
+            {
+                IsoSpeedPreset = IsoSpeedPreset.Auto;
+            }
+
+            if (_localSettings.Values.ContainsKey(KeyExposure))
+            {
+                Exposure = (int)_localSettings.Values[KeyExposure];
+            }
+            else
+            {
+                Exposure = VideoEngine.ExposureAutoValue; // Auto by default, -1
+            }
         }
 
         public void Save()
@@ -102,6 +140,9 @@ namespace ObjectTrackingDemo
             _localSettings.Values[KeyThreshold] = Threshold;
             _localSettings.Values[KeyFlash] = Flash;
             _localSettings.Values[KeyTorch] = Torch;
+            _localSettings.Values[KeyMode] = Mode.ToString();
+            _localSettings.Values[KeyIsoSpeedPreset] = IsoSpeedPreset.ToString();
+            _localSettings.Values[KeyExposure] = Exposure;
         }
     }
 }

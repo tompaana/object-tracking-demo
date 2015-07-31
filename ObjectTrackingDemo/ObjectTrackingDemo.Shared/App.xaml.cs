@@ -27,9 +27,19 @@ namespace ObjectTrackingDemo
     {
 #if WINDOWS_PHONE_APP
         private TransitionCollection transitions;
+
+        public static ContinuationManager ContinuationManager
+        {
+            get;
+            private set;
+        }
 #endif
 
-        public Settings _settings;
+        public static Settings Settings
+        {
+            get;
+            private set;
+        }
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -39,7 +49,11 @@ namespace ObjectTrackingDemo
         {
             this.InitializeComponent();
             this.Suspending += this.OnSuspending;
-            _settings = new Settings();
+            Settings = new Settings();
+
+#if WINDOWS_PHONE_APP
+            ContinuationManager = new ContinuationManager();
+#endif
         }
 
     /// <summary>
@@ -111,6 +125,21 @@ namespace ObjectTrackingDemo
         }
 
 #if WINDOWS_PHONE_APP
+        protected override void OnActivated(IActivatedEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("App.OnActivated(): " + e.PreviousExecutionState.ToString());
+
+            // Check if this is a continuation
+            var continuationEventArgs = e as IContinuationActivatedEventArgs;
+
+            if (continuationEventArgs != null)
+            {
+                ContinuationManager.Continue(continuationEventArgs);
+            }
+
+            Window.Current.Activate();
+        }
+
         /// <summary>
         /// Restores the content transitions after the app has launched.
         /// </summary>

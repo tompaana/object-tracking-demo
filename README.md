@@ -42,6 +42,13 @@ The features of the demo are:
 * When the object displacement exceeds set parameters (the thing moves), it will
   trigger a post-processing operation, which will try to deduce, using the
   frames in the buffer, where the object went
+  
+### New in 2015-07-31 update ###
+
+* **Chroma delta** and **edge detection** modes, which do not really do much,
+  but display the algorithms in real-time.
+* Cleaned up code and improved project structure.
+* Camera settings for ISO and exposure added (availability based on device).
 
 
 ## How do I build/compile it? ##
@@ -61,6 +68,8 @@ If you are targeting big Windows (e.g. laptop):
 
 ## How do I use it? ##
 
+### Chroma filter mode ###
+
 **Take. It. Slow.** When you start, select the color of the object by tapping
 the viewfinder. The app will select the color in the point tapped. To fine-tune
 the color, tap the color selection button (which also displays the selected
@@ -68,9 +77,26 @@ color). Start with very **low threshold value** and increase it little by little
 as needed until the app recognizes the desired object. Note that you need to
 tap the magic wand icon to start the video engine (the effect).
 
+If the color you are targeting is really distinctive (does not appear in the
+background), you can try to exaggerate the color selection and use a higher
+threshold value.
+
 If you use too high threshold, especially on the phone, the app may feel like
 it has stopped responding. This is because there is too much data sent for
 further processing.
+
+### Chroma delta mode ###
+
+Select a low threshold value and increase. This mode does not really do
+anything (yet), but displays the changes in the consecutive frames i.e. if the
+camera is stable and nothing is moving in the field of view, nothing is shown
+on the viewfinder.
+
+### Edge detection ###
+
+Select a low threshold value and increase. This mode also does not do anything
+special yet, but displays the edges of objects based on really, really simple
+gradient calculation.
 
 
 ## How does it work? ##
@@ -92,10 +118,18 @@ a native component, written with C++, that does the heavy lifting.
 
 **Important classes of `VideoEffect` project**
 
-* [BufferEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/BufferEffect.h): The video effect, which runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
-* [ObjectFinderEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ObjectFinderEffect.h): The video effect, which manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
-* [ImageAnalyzer](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageAnalyzer.h): Utilizes the methods provided by `ImageProcessingUtils` for higher level image analysis.
-* [ImageProcessingUtils](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessingUtils.h): Provides the basic methods for chroma filtering, mapping objects from binary image, creating convex hulls etc.
+* Image Processing:
+** [ImageAnalyzer](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessing/ImageAnalyzer.h): Utilizes the methods provided by `ImageProcessingUtils` for higher level image analysis.
+** [ImageProcessingUtils](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessing/ImageProcessingUtils.h): Provides the basic methods for chroma filtering, mapping objects from binary image, creating convex hulls etc.
+
+* Effects:
+** [ChromaDeltaEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaDeltaEffect.h): Compares the two consecutive frames and highlights the pixels, which have changed (based on a threshold value).
+** [ChromaFilterEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaFilterEffect.h): Highlights pixels, which are close enough, determined by the set threshold value, to the set target luma/chroma values.
+** [EdgeDetectionEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/EdgeDetectionEffect.h): Highlights the pixels, which appear to be an edge based on the calculated, simple gradient value.
+
+* Transforms:
+** [BufferTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/BufferTransform.h): Runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
+** [RealtimeTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/RealtimeTransform.h): Manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
 
 The image below describes the workloads of the two video effects based on the
 application state. Red color signifies heavy CPU load whereas green means low
@@ -109,6 +143,5 @@ CPU load.
 * Phone build: The app is sometimes really slow or even jams. The root cause is
   the object mapping algorithm, which does not handle certain kind of data well.
   To manage the problem use as low threshold value as possible.
-* The big Windows version lacks some of the features that the phone version has.
 * The app crashes often :(
 * The solution will not compile with Community 2015 RC version of Visual Studio.

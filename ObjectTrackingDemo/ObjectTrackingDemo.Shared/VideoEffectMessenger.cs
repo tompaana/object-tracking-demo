@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
 using VideoEffect;
-using Windows.UI.Xaml.Media.Imaging;
 
 namespace ObjectTrackingDemo
 {
@@ -34,7 +30,6 @@ namespace ObjectTrackingDemo
 
         private StateManager _stateManager;
         private int _operationDurationInMilliseconds;
-        private int _frameRequestId;
 
         public ObjectDetails LockedRect
         {
@@ -53,6 +48,108 @@ namespace ObjectTrackingDemo
                 _operationDurationInMilliseconds = value;
             }
         }
+
+        #region Properties for communicating towards VideoEffect
+
+        private int _frameRequestId;
+        public int FrameRequestId
+        {
+            get
+            {
+                return _frameRequestId;
+            }
+            set
+            {
+                _frameRequestId = value;
+            }
+        }
+
+        private bool _settingsChangedFlag;
+        public bool SettingsChangedFlag
+        {
+            get
+            {
+                bool settingsChanged = _settingsChangedFlag;
+
+                if (_settingsChangedFlag)
+                {
+                    _settingsChangedFlag = false;
+                }
+
+                return settingsChanged;
+            }
+            set
+            {
+                _settingsChangedFlag = value;
+            }
+        }
+
+        private float _threshold;
+        public float ThresholdSetting
+        {
+            get
+            {
+
+                return _threshold;
+            }
+            set
+            {
+                _threshold = value;
+                SettingsChangedFlag = true;
+            }
+        }
+
+        private float[] _targetYuv;
+        public float[] TargetYuvSetting
+        {
+            get
+            {
+
+                return _targetYuv;
+            }
+            set
+            {
+                _targetYuv = value;
+                SettingsChangedFlag = true;
+            }
+        }
+
+        private bool _modeChangedFlag;
+        public bool ModeChangedFlag
+        {
+            get
+            {
+                bool modeChanged = _modeChangedFlag;
+
+                if (_modeChangedFlag)
+                {
+                    _modeChangedFlag = false;
+                }
+
+                return modeChanged;
+            }
+            set
+            {
+                _modeChangedFlag = value;
+            }
+        }
+
+        private int _mode;
+        public int ModeSetting
+        {
+            get
+            {
+
+                return _mode;
+            }
+            set
+            {
+                _mode = value;
+                ModeChangedFlag = true;
+            }
+        }
+
+        #endregion
 
         public VideoEffectMessenger(StateManager stateManager)
         {
@@ -101,15 +198,40 @@ namespace ObjectTrackingDemo
             }
         }
 
-        public void RequestFrame(int id)
+        /// <summary>
+        /// Used to check if there are pending setting changes towards VideoEffect.
+        /// Meant to be called by native VideoEffect transform class.
+        /// </summary>
+        /// <returns>True, if the are setting changes pending.</returns>
+        public bool IsSettingsChangedFlagRaised()
         {
-            _frameRequestId = id;
+            return SettingsChangedFlag;
         }
 
-        public int FrameRequested()
+        public float Threshold()
         {
-            int tmpFrameRequired = _frameRequestId;
-            _frameRequestId = 0;
+            return ThresholdSetting;
+        }
+
+        public float[] TargetYuv()
+        {
+            return TargetYuvSetting;
+        }
+
+        public bool IsModeChangedFlagRaised()
+        {
+            return ModeChangedFlag;
+        }
+
+        public int Mode()
+        {
+            return ModeSetting;
+        }
+
+        public int IsFrameRequested()
+        {
+            int tmpFrameRequired = FrameRequestId;
+            FrameRequestId = 0;
             return tmpFrameRequired;
         }
 

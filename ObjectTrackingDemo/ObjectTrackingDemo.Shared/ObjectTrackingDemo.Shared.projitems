@@ -16,29 +16,42 @@
     <Compile Include="$(MSBuildThisFileDirectory)App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="$(MSBuildThisFileDirectory)ColorPickerControl.xaml.cs">
+    <Compile Include="$(MSBuildThisFileDirectory)Common\NavigationHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Common\ObservableDictionary.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Common\RelayCommand.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Common\SuspensionManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\ColorPickerControl.xaml.cs">
       <DependentUpon>ColorPickerControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="$(MSBuildThisFileDirectory)ControlBar.xaml.cs">
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\ControlBar.xaml.cs">
       <DependentUpon>ControlBar.xaml</DependentUpon>
     </Compile>
-    <Compile Include="$(MSBuildThisFileDirectory)DisplayUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\SettingsPanelControl.xaml.cs">
+      <DependentUpon>SettingsPanelControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)Utils\CameraUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils\ContinuationManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils\DisplayUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils\ImageFileManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils\ImageProcessingUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VideoEffectMessenger.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ImageProcessingUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Settings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)StateManager.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)CameraUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VideoEngine.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="$(MSBuildThisFileDirectory)ColorPickerControl.xaml">
+    <Page Include="$(MSBuildThisFileDirectory)Controls\ColorPickerControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="$(MSBuildThisFileDirectory)ControlBar.xaml">
+    <Page Include="$(MSBuildThisFileDirectory)Controls\ControlBar.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="$(MSBuildThisFileDirectory)Controls\SettingsPanelControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

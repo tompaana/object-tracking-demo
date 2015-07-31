@@ -136,6 +136,11 @@
             HorizontalAlignment="Left"
             Visibility="Collapsed" />
         
+        <local:SettingsPanelControl
+            x:Name="settingsPanelControl"
+            HorizontalAlignment="Right"
+            Visibility="Collapsed" />
+        
         <Grid
             x:Name="processingResultGrid"
             Background="#aa000000"

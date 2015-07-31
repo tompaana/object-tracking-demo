@@ -1,0 +1,12 @@
+import "Windows.Media.idl";
+
+#include <sdkddkver.h>
+
+namespace RealtimeTransform
+{
+	[version(NTDDI_WIN8)]
+	runtimeclass RealtimeTransform
+        {
+            interface Windows.Media.IMediaExtension;
+	}
+}

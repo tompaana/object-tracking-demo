@@ -4,29 +4,113 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)BufferEffect.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessingUtils.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ImageAnalyzer.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)AbstractEffect.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Settings.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ObjectFinderEffect.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\AbstractEffect.cpp">
+      <Filter>Effects</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\ChromaDeltaEffect.cpp">
+      <Filter>Effects</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\ChromaFilterEffect.cpp">
+      <Filter>Effects</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\EdgeDetectionEffect.cpp">
+      <Filter>Effects</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageAnalyzer.cpp">
+      <Filter>ImageProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingUtils.cpp">
+      <Filter>ImageProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Interop\InteropUtils.cpp">
+      <Filter>Interop</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\AbstractTransform.cpp">
+      <Filter>Transforms</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.cpp">
+      <Filter>Transforms</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.cpp">
+      <Filter>Transforms</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)BufferEffect.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)BufferEffect_h.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Common.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ObjectDetails.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessingUtils.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ImageAnalyzer.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)AbstractEffect.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)BufferLock.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Settings.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ObjectFinderEffect.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ObjectFinderEffectTransform_h.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)MessengerInterface.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\AbstractEffect.h">
+      <Filter>Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\ChromaDeltaEffect.h">
+      <Filter>Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\ChromaFilterEffect.h">
+      <Filter>Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\EdgeDetectionEffect.h">
+      <Filter>Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageAnalyzer.h">
+      <Filter>ImageProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingCommon.h">
+      <Filter>ImageProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingUtils.h">
+      <Filter>ImageProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ObjectDetails.h">
+      <Filter>ImageProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Interop\InteropUtils.h">
+      <Filter>Interop</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Interop\MessengerInterface.h">
+      <Filter>Interop</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\AbstractTransform.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform_h.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform_h.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="$(MSBuildThisFileDirectory)BufferEffect.idl" />
-    <Midl Include="$(MSBuildThisFileDirectory)ObjectFinderEffectTransform.idl" />
+    <Filter Include="Effects">
+      <UniqueIdentifier>{dca0ca13-bab7-4c22-91e2-edd975e94ec8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImageProcessing">
+      <UniqueIdentifier>{ff9d1585-c814-4893-a186-edfee2a5f1d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Interop">
+      <UniqueIdentifier>{4b8d9e50-addc-4f9f-a549-3450fd7786ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Transforms">
+      <UniqueIdentifier>{f84acfd4-d7f3-4fb5-a7a1-07ab126121ed}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.idl">
+      <Filter>Transforms</Filter>
+    </Midl>
+    <Midl Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.idl">
+      <Filter>Transforms</Filter>
+    </Midl>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.def">
+      <Filter>Transforms</Filter>
+    </None>
   </ItemGroup>
 </Project>

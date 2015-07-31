@@ -1,0 +1,94 @@
+﻿<UserControl
+    x:Class="ObjectTrackingDemo.SettingsPanelControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ObjectTrackingDemo.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="300"
+    d:DesignWidth="400">
+    
+    <Grid Background="#bb000000">
+        <Grid
+            Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="0" Margin="6,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock
+                    Grid.Row="0"
+                    HorizontalAlignment="Center"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    Foreground="White"
+                    Text="Mode" />
+                <ListBox
+                    x:Name="modeSelectorListBox"
+                    Grid.Row="1"
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    SelectionMode="Single"
+                    SelectionChanged="OnModeSelectionChanged" />
+            </Grid>
+            <Grid x:Name="isoGrid" Grid.Column="1" Margin="6,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock
+                    Grid.Row="0"
+                    HorizontalAlignment="Center"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    Foreground="White"
+                    Text="ISO" />
+                <ListBox
+                    x:Name="isoSelectorListBox"
+                    Grid.Row="1"
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    SelectionMode="Single"
+                    SelectionChanged="OnIsoSelectionChanged" />
+            </Grid>
+            <Grid x:Name="exposureGrid" Grid.Column="2" Margin="6,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock
+                    x:Name="exposureHeaderTextBlock"
+                    Grid.Row="0"
+                    HorizontalAlignment="Center"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    Foreground="White"
+                    Text="Exposure" />
+                <Slider
+                    x:Name="exposureSlider"
+                    Grid.Row="1"
+                    Margin="0,12"
+                    HorizontalAlignment="Center"
+                    Orientation="Vertical"
+                    ValueChanged="OnExposureSliderValueChanged" />
+                <Button
+                    x:Name="autoButton"
+                    Grid.Row="2"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Foreground="White"
+                    Content="auto"
+                    Click="OnAutoExposureButtonClicked" />
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

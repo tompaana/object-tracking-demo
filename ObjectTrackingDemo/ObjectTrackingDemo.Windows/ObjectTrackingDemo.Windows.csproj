@@ -123,8 +123,11 @@
     <Content Include="..\ObjectTrackingDemo.WindowsPhone\Assets\HideIcon.png">
       <Link>Assets\HideIcon.png</Link>
     </Content>
-    <Content Include="..\ObjectTrackingDemo.WindowsPhone\Assets\hsv.png">
-      <Link>Assets\hsv.png</Link>
+    <Content Include="..\ObjectTrackingDemo.WindowsPhone\Assets\HsvColorMap.png">
+      <Link>Assets\HsvColorMap.png</Link>
+    </Content>
+    <Content Include="..\ObjectTrackingDemo.WindowsPhone\Assets\SettingsIcon.png">
+      <Link>Assets\SettingsIcon.png</Link>
     </Content>
     <Content Include="..\ObjectTrackingDemo.WindowsPhone\Assets\tos_keypress1.mp3">
       <Link>Assets\tos_keypress1.mp3</Link>
