@@ -120,20 +120,17 @@ a native component, written with C++, that does the heavy lifting.
 **Important classes of `VideoEffect` project**
 
 * Image Processing:
-* 
-** [ImageAnalyzer](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessing/ImageAnalyzer.h): Utilizes the methods provided by `ImageProcessingUtils` for higher level image analysis.
-** [ImageProcessingUtils](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessing/ImageProcessingUtils.h): Provides the basic methods for chroma filtering, mapping objects from binary image, creating convex hulls etc.
+ * [ImageAnalyzer](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessing/ImageAnalyzer.h): Utilizes the methods provided by `ImageProcessingUtils` for higher level image analysis.
+ * [ImageProcessingUtils](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/ImageProcessing/ImageProcessingUtils.h): Provides the basic methods for chroma filtering, mapping objects from binary image, creating convex hulls etc.
 
 * Effects:
-* 
-** [ChromaDeltaEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaDeltaEffect.h): Compares the two consecutive frames and highlights the pixels, which have changed (based on a threshold value).
-** [ChromaFilterEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaFilterEffect.h): Highlights pixels, which are close enough, determined by the set threshold value, to the set target luma/chroma values.
-** [EdgeDetectionEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/EdgeDetectionEffect.h): Highlights the pixels, which appear to be an edge based on the calculated, simple gradient value.
+ * [ChromaDeltaEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaDeltaEffect.h): Compares the two consecutive frames and highlights the pixels, which have changed (based on a threshold value).
+ * [ChromaFilterEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaFilterEffect.h): Highlights pixels, which are close enough, determined by the set threshold value, to the set target luma/chroma values.
+ * [EdgeDetectionEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/EdgeDetectionEffect.h): Highlights the pixels, which appear to be an edge based on the calculated, simple gradient value.
 
 * Transforms:
-* 
-** [BufferTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/BufferTransform.h): Runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
-** [RealtimeTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/RealtimeTransform.h): Manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
+ * [BufferTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/BufferTransform.h): Runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
+ * [RealtimeTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/RealtimeTransform.h): Manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
 
 The image below describes the workloads of the two video effects based on the
 application state. Red color signifies heavy CPU load whereas green means low
