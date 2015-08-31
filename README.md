@@ -1,11 +1,20 @@
 # Object Tracking Demo #
 
+**New in 2015-08-31 update**
+
+* Feature to process local images (treated as single frames) implemented
+* Improved circular object detection (minimal closing circle based on convex
+  hull)
+* Simple noise removal filter implemented
+* UI (ObjectTrackingDemo project) refactored
+
+
 **New in 2015-07-31 update**
 
 * **Chroma delta** and **edge detection** modes, which do not really do much,
-  but display the algorithms in real-time.
-* Cleaned up code and improved project structure.
-* Camera settings for ISO and exposure added (availability based on device).
+  but display the algorithms in real-time
+* Cleaned up code and improved project structure
+* Camera settings for ISO and exposure added (availability based on device)
 
 
 ## Description ##
@@ -99,6 +108,10 @@ Select a low threshold value and increase. This mode also does not do anything
 special yet, but displays the edges of objects based on really, really simple
 gradient calculation.
 
+**Noise removal**
+
+Check the **Remove noise** check box to enable (found in settings).
+
 
 ## How does it work? ##
 
@@ -127,7 +140,8 @@ a native component, written with C++, that does the heavy lifting.
  * [ChromaDeltaEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaDeltaEffect.h): Compares the two consecutive frames and highlights the pixels, which have changed (based on a threshold value).
  * [ChromaFilterEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/ChromaFilterEffect.h): Highlights pixels, which are close enough, determined by the set threshold value, to the set target luma/chroma values.
  * [EdgeDetectionEffect](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/EdgeDetectionEffect.h): Highlights the pixels, which appear to be an edge based on the calculated, simple gradient value.
-
+ * [NoiseRemoval](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Effects/NoiseRemovalEffect.h): Smoothers the frame to remove noise.
+ 
 * Transforms:
  * [BufferTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/BufferTransform.h): Runs the ring buffer and handles the detection of the object's destination i.e. where did the object go.
  * [RealtimeTransform](https://github.com/tompaana/object-tracking-demo/blob/master/VideoEffect/VideoEffect.Shared/Transforms/RealtimeTransform.h): Manages finding the object, when stationary, locking to it and detecting the moment when the object displacement occurs i.e. when the object moves from its starting position.
@@ -141,8 +155,10 @@ CPU load.
 
 ## Known issues ##
 
-* Phone build: The app is sometimes really slow or even jams. The root cause is
-  the object mapping algorithm, which does not handle certain kind of data well.
-  To manage the problem use as low threshold value as possible.
-* The app crashes often :(
+* Windows build: When first time enabled, the effect (on camera page) does
+  nothing but freezes the frame. Turn the effect off and on again to get it
+  working.
+* Windows Phone build: The app is sometimes really slow or even jams. The root
+  cause is the object mapping algorithm, which does not handle certain kind of
+  data well. To manage the problem use as low threshold value as possible.
 * The solution will not compile with Community 2015 RC version of Visual Studio.
