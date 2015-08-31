@@ -62,6 +62,12 @@ namespace ObjectTrackingDemo.Common
         private Page Page { get; set; }
         private Frame Frame { get { return this.Page.Frame; } }
 
+        public bool IsHardwareBackButtonSuppressed
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="NavigationHelper"/> class.
         /// </summary>
@@ -208,7 +214,7 @@ namespace ObjectTrackingDemo.Common
         /// <param name="e">Event data describing the conditions that led to the event.</param>
         private void HardwareButtons_BackPressed(object sender, Windows.Phone.UI.Input.BackPressedEventArgs e)
         {
-            if (this.GoBackCommand.CanExecute(null))
+            if (!IsHardwareBackButtonSuppressed && this.GoBackCommand.CanExecute(null))
             {
                 e.Handled = true;
                 this.GoBackCommand.Execute(null);

@@ -16,6 +16,9 @@ namespace ObjectTrackingDemo
 {
     class ImageProcessingUtils
     {
+        public static readonly string VideoEncodingPropertiesSubTypeYUV2 = "YUY2";
+        public static readonly string VideoEncodingPropertiesSubTypeMJPG = "MJPG";
+
         /// <summary>
         /// Converts RGB888 pixel to YUV pixel.
         /// 
@@ -28,7 +31,7 @@ namespace ObjectTrackingDemo
         /// <param name="g"></param>
         /// <param name="b"></param>
         /// <returns></returns>
-        public static byte[] RGBToYUV(byte r, byte g, byte b)
+        public static byte[] RgbToYuv(byte r, byte g, byte b)
         {
             byte[] yuv = new byte[3];
             yuv[0] = (byte)(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16);
@@ -44,7 +47,7 @@ namespace ObjectTrackingDemo
         /// <param name="u"></param>
         /// <param name="v"></param>
         /// <returns></returns>
-        public static byte[] YUVToRGB(byte y, byte u, byte v)
+        public static byte[] YuvToRgb(byte y, byte u, byte v)
         {
             int c = y - 16;
             int d = u - 128;
@@ -59,6 +62,45 @@ namespace ObjectTrackingDemo
         }
 
         /// <summary>
+        /// For convenience.
+        /// </summary>
+        /// <param name="color"></param>
+        /// <returns></returns>
+        public static float[] ColorToYuv(Color color)
+        {
+            byte[] yuv = RgbToYuv(color.R, color.G, color.B);
+
+            return new float[]
+                {
+                    (float)yuv[0],
+                    (float)yuv[1],
+                    (float)yuv[2]
+                };
+        }
+
+        /// <summary>
+        /// For convenience.
+        /// </summary>
+        /// <param name="yuv"></param>
+        /// <returns></returns>
+        public static Color YuvToColor(byte[] yuv)
+        {
+            byte[] rgb = YuvToRgb(yuv[0], yuv[1], yuv[2]);
+            return Color.FromArgb(0xff, rgb[0], rgb[1], rgb[2]);
+        }
+
+        /// <summary>
+        /// For convenience.
+        /// </summary>
+        /// <param name="yuv"></param>
+        /// <returns></returns>
+        public static Color YuvToColor(float[] yuv)
+        {
+            byte[] rgb = YuvToRgb((byte)yuv[0], (byte)yuv[1], (byte)yuv[2]);
+            return Color.FromArgb(0xff, rgb[0], rgb[1], rgb[2]);
+        }
+
+        /// <summary>
         /// Converts the given NV12 pixel array format into an RGB pixel array.
         /// </summary>
         /// <param name="yuvPixelArray">The NV12 pixel array.</param>
@@ -66,18 +108,18 @@ namespace ObjectTrackingDemo
         /// <param name="pixelHeight">The image height in pixels.</param>
         /// <param name="ignoreAlpha">If true, will ignore alpha channel.</param>
         /// <returns>An RGB pixel array.</returns>
-        public static byte[] NV12PixelArrayToRGBPixelArray(byte[] yuvPixelArray, int pixelWidth, int pixelHeight, bool ignoreAlpha = false)
+        public static byte[] Nv12PixelArrayToRgbPixelArray(byte[] yuvPixelArray, int pixelWidth, int pixelHeight, bool ignoreAlpha = false)
         {
             if (yuvPixelArray.Length < pixelWidth * pixelHeight * 1.5f)
             {
                 System.Diagnostics.Debug.WriteLine(
-                    "NV12PixelArrayToRGBPixelArray: Too few bytes: Was expecting "
+                    "Nv12PixelArrayToRgbPixelArray: Too few bytes: Was expecting "
                     + pixelWidth * pixelHeight * 1.5f + ", but got " + yuvPixelArray.Length);
                 return null;
             }
 
             System.Diagnostics.Debug.WriteLine(
-                "NV12PixelArrayToRGBPixelArray: " + yuvPixelArray.Length + " bytes, "
+                "Nv12PixelArrayToRgbPixelArray: " + yuvPixelArray.Length + " bytes, "
                 + pixelWidth + "x" + pixelHeight);
 
             int bytesPerPixel = ignoreAlpha ? 3 : 4;
@@ -106,7 +148,7 @@ namespace ObjectTrackingDemo
                     u = yuvPixelArray[cumulativeUVPlaneIndex + x];
                     v = yuvPixelArray[cumulativeUVPlaneIndex + x + 1];
 
-                    rgbPixel = YUVToRGB(yy, u, v);
+                    rgbPixel = YuvToRgb(yy, u, v);
 
                     for (int i = 0; i < 2; ++i)
                     {
@@ -135,18 +177,18 @@ namespace ObjectTrackingDemo
         /// <param name="pixelHeight">The image height in pixels.</param>
         /// <param name="ignoreAlpha">If true, will ignore alpha channel.</param>
         /// <returns>An RGB pixel array.</returns>
-        public static byte[] YUY2PixelArrayToRGBPixelArray(byte[] yuvPixelArray, int pixelWidth, int pixelHeight, bool ignoreAlpha = false)
+        public static byte[] Yuy2PixelArrayToRgbPixelArray(byte[] yuvPixelArray, int pixelWidth, int pixelHeight, bool ignoreAlpha = false)
         {
             if (yuvPixelArray.Length < pixelWidth * pixelHeight * 2)
             {
                 System.Diagnostics.Debug.WriteLine(
-                    "YUY2PixelArrayToRGBPixelArray: Too few bytes: Was expecting "
+                    "Yuy2PixelArrayToRgbPixelArray: Too few bytes: Was expecting "
                     + pixelWidth * pixelHeight * 2 + ", but got " + yuvPixelArray.Length);
                 return null;
             }
 
             System.Diagnostics.Debug.WriteLine(
-                "YUY2PixelArrayToRGBPixelArray: " + yuvPixelArray.Length + " bytes, "
+                "Yuy2PixelArrayToRgbPixelArray: " + yuvPixelArray.Length + " bytes, "
                 + pixelWidth + "x" + pixelHeight);
 
             int bytesPerPixel = ignoreAlpha ? 3 : 4;
@@ -158,7 +200,7 @@ namespace ObjectTrackingDemo
             byte v = 0;
 
             byte[] rgbPixel = null;
-            int rgbIndex = 0;
+            int rgbArrayIndex = 0;
 
             for (int y = 0; y < pixelHeight; ++y)
             {
@@ -169,25 +211,123 @@ namespace ObjectTrackingDemo
                     u = yuvPixelArray[index + 3];
                     v = yuvPixelArray[index + 1];
 
-                    rgbPixel = YUVToRGB(yy, u, v);
+                    rgbPixel = YuvToRgb(yy, u, v);
 
                     for (int i = 0; i < 2; ++i)
                     {
-                        rgbPixelArray[rgbIndex] = rgbPixel[0]; // B
-                        rgbPixelArray[rgbIndex + 1] = rgbPixel[1]; // G
-                        rgbPixelArray[rgbIndex + 2] = rgbPixel[2]; // R
+                        rgbPixelArray[rgbArrayIndex] = rgbPixel[0]; // B
+                        rgbPixelArray[rgbArrayIndex + 1] = rgbPixel[1]; // G
+                        rgbPixelArray[rgbArrayIndex + 2] = rgbPixel[2]; // R
 
                         if (!ignoreAlpha)
                         {
-                            rgbPixelArray[rgbIndex + 3] = 0xff;
+                            rgbPixelArray[rgbArrayIndex + 3] = 0xff;
                         }
 
-                        rgbIndex += bytesPerPixel;
+                        rgbArrayIndex += bytesPerPixel;
                     }
                 }
             }
 
             return rgbPixelArray;
+        }
+
+        /// <summary>
+        /// Converts the given RGB pixel array format into an YUY2 pixel array.
+        /// </summary>
+        /// <param name="rgbPixelArray">The RGB pixel array.</param>
+        /// <param name="pixelWidth">The image width in pixels.</param>
+        /// <param name="pixelHeight">The image height in pixels.</param>
+        /// <param name="ignoreAlpha">If true, will ignore alpha channel.</param>
+        /// <returns>An YUY2 pixel array.</returns>
+        public static byte[] RgbPixelArrayToYuy2PixelArray(byte[] rgbPixelArray, int pixelWidth, int pixelHeight)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                "RgbPixelArrayToYuy2PixelArray: " + rgbPixelArray.Length + " bytes, "
+                + pixelWidth + "x" + pixelHeight);
+
+            int bytesPerRgbPixel = rgbPixelArray.Length / (pixelWidth * pixelHeight);
+            int bytesPerLineRgb = pixelWidth * bytesPerRgbPixel;
+            byte[] yuvPixelArray = new byte[pixelWidth * pixelHeight * 2];
+
+            byte[] yuvPixel = null;
+            int yuvArrayIndex = 0;
+
+            for (int i = 0;
+                    i <= rgbPixelArray.Length - bytesPerRgbPixel
+                    && yuvArrayIndex <= yuvPixelArray.Length - 4;
+                        i += bytesPerRgbPixel)
+            {
+                yuvPixel = RgbToYuv(rgbPixelArray[i + 2], rgbPixelArray[i + 1], rgbPixelArray[i]);
+                yuvPixelArray[yuvArrayIndex] = yuvPixel[0]; // y0
+                yuvPixelArray[yuvArrayIndex + 1] = yuvPixel[1]; // u
+                yuvPixelArray[yuvArrayIndex + 2] = yuvPixel[0]; // y1
+                yuvPixelArray[yuvArrayIndex + 3] = yuvPixel[2]; // v
+                yuvArrayIndex += 4;
+                i += bytesPerRgbPixel;
+            }
+
+            return yuvPixelArray;
+        }
+
+        /// <summary>
+        /// Converts the given image memory stream to bitmap image.
+        /// </summary>
+        /// <param name="imageMemoryStream">The image memory stream to convert.</param>
+        /// <returns>The bitmap image or null in case of a failure.</returns>
+        public static BitmapImage ImageMemoryStreamToBitmapImage(MemoryStream imageMemoryStream)
+        {
+            BitmapImage bitmapImage = null;
+
+            if (imageMemoryStream != null && imageMemoryStream.Length > 0)
+            {
+                imageMemoryStream.Seek(0, SeekOrigin.Begin);
+                bitmapImage = new BitmapImage();
+                bitmapImage.SetSource(imageMemoryStream.AsRandomAccessStream());
+            }
+
+            return bitmapImage;
+        }
+
+        /// <summary>
+        /// Converts the given image memory stream to pixel array.
+        /// </summary>
+        /// <param name="imageMemoryStream">The image memory stream to convert.</param>
+        /// <returns>The image as a pixel array or null in case of a failure.</returns>
+        public static byte[] ImageMemoryStreamToRgbPixelArray(MemoryStream imageMemoryStream)
+        {
+            byte[] pixelArray = null;
+            BitmapImage bitmapImage = ImageMemoryStreamToBitmapImage(imageMemoryStream);
+
+            if (bitmapImage != null)
+            {
+                WriteableBitmap writeableBitmap = new WriteableBitmap(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
+                imageMemoryStream.Seek(0, SeekOrigin.Begin);
+                writeableBitmap.SetSource(imageMemoryStream.AsRandomAccessStream());
+                pixelArray = writeableBitmap.PixelBuffer.ToArray();
+            }
+
+            return pixelArray;
+        }
+
+        /// <summary>
+        /// Converts the given pixel array into a writeable bitmap.
+        /// </summary>
+        /// <param name="pixelArray">The pixel array.</param>
+        /// <param name="width">The width of the image in pixels.</param>
+        /// <param name="height">The height of the image in pixels.</param>
+        /// <returns></returns>
+        public static async Task<WriteableBitmap> PixelArrayToWriteableBitmapAsync(byte[] pixelArray, int width, int height)
+        {
+            string videoRecordFormat = CameraUtils.ResolveVideoRecordFormat(VideoEngine.Instance.MediaCapture);
+
+            WriteableBitmap bitmap =
+                (videoRecordFormat.Equals(VideoEncodingPropertiesSubTypeYUV2)
+                 || videoRecordFormat.Equals(VideoEncodingPropertiesSubTypeMJPG))
+                    ? await ImageProcessingUtils.Yuy2PixelArrayToWriteableBitmapAsync(pixelArray, width, height)
+                    : await ImageProcessingUtils.Nv12PixelArrayToWriteableBitmapAsync(pixelArray, width, height);
+
+            return bitmap;
         }
 
         /// <summary>
@@ -282,10 +422,10 @@ namespace ObjectTrackingDemo
         /// <param name="width">The width of the image in pixels.</param>
         /// <param name="height">The height of the image in pixels.</param>
         /// <returns>A WriteableBitmap instance containing the image.</returns>
-        public async static Task<WriteableBitmap> NV12PixelArrayToWriteableBitmapAsync(byte[] yuvPixelArray, int width, int height)
+        public async static Task<WriteableBitmap> Nv12PixelArrayToWriteableBitmapAsync(byte[] yuvPixelArray, int width, int height)
         {
             WriteableBitmap writeableBitmap = null;
-            byte[] rgbPixelArray = ImageProcessingUtils.NV12PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+            byte[] rgbPixelArray = ImageProcessingUtils.Nv12PixelArrayToRgbPixelArray(yuvPixelArray, width, height);
 
             if (rgbPixelArray != null)
             {
@@ -311,10 +451,10 @@ namespace ObjectTrackingDemo
         /// <param name="width">The width of the image in pixels.</param>
         /// <param name="height">The height of the image in pixels.</param>
         /// <returns>A BitmapImage instance containing the image.</returns>
-        public static BitmapImage NV12PixelArrayToBitmapImage(byte[] yuvPixelArray, int width, int height)
+        public static BitmapImage Nv12PixelArrayToBitmapImage(byte[] yuvPixelArray, int width, int height)
         {
             BitmapImage bitmapImage = null;
-            byte[] rgbPixelArray = ImageProcessingUtils.NV12PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+            byte[] rgbPixelArray = ImageProcessingUtils.Nv12PixelArrayToRgbPixelArray(yuvPixelArray, width, height);
 
             if (rgbPixelArray != null)
             {
@@ -347,7 +487,7 @@ namespace ObjectTrackingDemo
         /// <param name="fileName">The desired filename.</param>
         public async static Task NV12PixelArrayToWriteableBitmapFileAsync(byte[] yuvPixelArray, int width, int height, string fileName)
         {
-            byte[] rgbPixelArray = ImageProcessingUtils.NV12PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+            byte[] rgbPixelArray = ImageProcessingUtils.Nv12PixelArrayToRgbPixelArray(yuvPixelArray, width, height);
             var file = await Windows.Storage.ApplicationData.Current.LocalFolder.CreateFileAsync(
                 fileName, CreationCollisionOption.GenerateUniqueName);
 
@@ -374,10 +514,10 @@ namespace ObjectTrackingDemo
         /// <param name="width">The width of the image in pixels.</param>
         /// <param name="height">The height of the image in pixels.</param>
         /// <returns>A WriteableBitmap instance containing the image.</returns>
-        public async static Task<WriteableBitmap> YUY2PixelArrayToWriteableBitmapAsync(byte[] yuvPixelArray, int width, int height)
+        public async static Task<WriteableBitmap> Yuy2PixelArrayToWriteableBitmapAsync(byte[] yuvPixelArray, int width, int height)
         {
             WriteableBitmap writeableBitmap = null;
-            byte[] rgbPixelArray = ImageProcessingUtils.YUY2PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+            byte[] rgbPixelArray = ImageProcessingUtils.Yuy2PixelArrayToRgbPixelArray(yuvPixelArray, width, height);
 
             if (rgbPixelArray != null)
             {
@@ -403,10 +543,10 @@ namespace ObjectTrackingDemo
         /// <param name="width">The width of the image in pixels.</param>
         /// <param name="height">The height of the image in pixels.</param>
         /// <returns>A BitmapImage instance containing the image.</returns>
-        public static BitmapImage YUY2PixelArrayToBitmapImage(byte[] yuvPixelArray, int width, int height)
+        public static BitmapImage Yuy2PixelArrayToBitmapImage(byte[] yuvPixelArray, int width, int height)
         {
             BitmapImage bitmapImage = null;
-            byte[] rgbPixelArray = ImageProcessingUtils.YUY2PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+            byte[] rgbPixelArray = ImageProcessingUtils.Yuy2PixelArrayToRgbPixelArray(yuvPixelArray, width, height);
 
             if (rgbPixelArray != null)
             {
@@ -437,9 +577,9 @@ namespace ObjectTrackingDemo
         /// <param name="width">The width of the image in pixels.</param>
         /// <param name="height">The height of the image in pixels.</param>
         /// <param name="fileName">The desired file name.</param>
-        public async static Task YUY2PixelArrayToWriteableBitmapFileAsync(byte[] yuvPixelArray, int width, int height, string fileName)
+        public async static Task Yuy2PixelArrayToWriteableBitmapFileAsync(byte[] yuvPixelArray, int width, int height, string fileName)
         {
-            byte[] rgbPixelArray = ImageProcessingUtils.YUY2PixelArrayToRGBPixelArray(yuvPixelArray, width, height);
+            byte[] rgbPixelArray = ImageProcessingUtils.Yuy2PixelArrayToRgbPixelArray(yuvPixelArray, width, height);
             var file = await Windows.Storage.ApplicationData.Current.LocalFolder.CreateFileAsync(
                 fileName, CreationCollisionOption.GenerateUniqueName);
 
@@ -532,10 +672,33 @@ namespace ObjectTrackingDemo
             var bitmap = new WriteableBitmap(width, height);
             bitmap.SetSource(fileStream);
             BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, destinationStream);
+            Stream bitmapStream = bitmap.PixelBuffer.AsStream();
+            var pixels = new byte[bitmapStream.Length];
+            await bitmapStream.ReadAsync(pixels, 0, pixels.Length);
+            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)width, (uint)height, 96.0, 96.0, pixels);
+            await encoder.FlushAsync();
+        }
+
+        /// <summary>
+        /// For convenience, if width and height already known.
+        /// </summary>
+        /// <param name="fileStream">The file stream with the image data.</param>
+        /// <param name="imageWidth">The width of the image in pixels.</param>
+        /// <param name="imageHeight">The height of the image in pixels.</param>
+        /// <param name="destinationStream">Where the JPEG data is written to.</param>
+        /// <returns></returns>
+        public static async Task FileStreamToJpegStreamAsync(IRandomAccessStream fileStream,
+                                                             int imageWidth,
+                                                             int imageHeight,
+                                                             IRandomAccessStream destinationStream)
+        {
+            var bitmap = new WriteableBitmap(imageWidth, imageHeight);
+            bitmap.SetSource(fileStream);
+            BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, destinationStream);
             Stream outStream = bitmap.PixelBuffer.AsStream();
             var pixels = new byte[outStream.Length];
             await outStream.ReadAsync(pixels, 0, pixels.Length);
-            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)width, (uint)height, 96.0, 96.0, pixels);
+            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)imageWidth, (uint)imageHeight, 96.0, 96.0, pixels);
             await encoder.FlushAsync();
         }
 

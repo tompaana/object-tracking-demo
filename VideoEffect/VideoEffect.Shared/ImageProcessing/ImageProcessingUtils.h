@@ -38,18 +38,27 @@ public:
 
     void drawLine(
         BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight,
-        const D2D1_POINT_2U& point1, D2D1_POINT_2U& point2,
+        const D2D1_POINT_2U& point1, const D2D1_POINT_2U& point2,
         const GUID& videoFormatSubtype,
         const UINT32& thickness = 1,
-        const BYTE& yy = 0xff, const BYTE& u = 0x80, const BYTE& v = 0x80);
+        const BYTE& yy = 0xff, const BYTE& u = 0x80, const BYTE& v = 0x80) const;
 
     void visualizeObjectNV12(
         BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight,
         UINT16* objectMap, const UINT16& objectId);
 
+    void visualizeConvexHull(
+        BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight,
+        const ConvexHull& convexHull, const GUID& videoFormatSubtype,
+        const UINT32& lineThickness = 1,
+        const BYTE& y = 0xff, const BYTE& u = 0x80, const BYTE& v = 0x80) const;
+
     BYTE* cropImage(BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight, const D2D_RECT_U &cropRect);
 
-    UINT16* createObjectMap(BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight, const GUID& videoFormatSubtype);
+    UINT16* createObjectMap(
+        BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight,
+        const D2D_RECT_U& targetRect, const GUID& videoFormatSubtype);
+
     UINT16 organizeObjectMap(UINT16* objectMap, const UINT32& objectMapSize);
 
     std::vector<D2D_POINT_2U>* extractSortedObjectPoints(
@@ -65,8 +74,8 @@ private:
         BYTE* binaryImage, UINT16* objectMap, const UINT32& currentIndex, const UINT32& imageWidth,
         bool fromLeftToRight = true);
 
-    bool calculateLineEquation(const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, double* a, int* b);
-    D2D_RECT_U lineBoundingBox(const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, bool leftAndRightHaveToHaveEvenValues = false);
+    bool calculateLineEquation(const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, double* a, int* b) const;
+    D2D_RECT_U lineBoundingBox(const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, bool leftAndRightHaveToHaveEvenValues = false) const;
     bool idExists(const std::vector<UINT16>& ids, const UINT16& id);
 };
 

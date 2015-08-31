@@ -12,7 +12,7 @@ struct D2D_POINT_2U;
 
 // Constants
 const double Pi = 3.14159265359;
-const float RelativeObjectSizeThreshold = 0.02f; // Size relative to view, e.g. 0.05f -> 5 %
+const float RelativeObjectSizeThreshold = 0.001f; // Size (area) relative to view, e.g. 0.05f -> 5 %
 
 
 // Video FOURCC codes.
@@ -76,10 +76,10 @@ enum VideoEffectState
 //-------------------------------------------------------------------
 enum Mode
 {
-    ChromaFilter = 0,
-    EdgeDetection = 1,
-    ChromaDelta = 2,
-    GaussianFilter = 3
+    Passthrough = 0,
+    ChromaFilter = 1,
+    EdgeDetection = 2,
+    ChromaDelta = 3
 };
 
 

@@ -7,10 +7,17 @@ using Windows.UI;
 
 namespace ObjectTrackingDemo
 {
+    public enum AppMode
+    {
+        Photo,
+        Camera
+    };
+
     public class Settings
     {
         public static readonly Color DefaultTargetColor = Color.FromArgb(0xff, 0xee, 0x10, 0x10);
         public static readonly double DefaultThreshold = 20d;
+        private const string KeyAppMode = "AppMode";
         private const string KeyTargetColorR = "TargetColorR";
         private const string KeyTargetColorG = "TargetColorG";
         private const string KeyTargetColorB = "TargetColorB";
@@ -18,10 +25,18 @@ namespace ObjectTrackingDemo
         private const string KeyFlash = "Flash";
         private const string KeyTorch = "Torch";
         private const string KeyMode = "Mode";
+        private const string KeyRemoveNoise = "RemoveNoise";
+        private const string KeyApplyEffectOnly = "ApplyEffectOnly";
         private const string KeyIsoSpeedPreset = "IsoSpeedPreset";
         private const string KeyExposure = "Exposure";
 
         private ApplicationDataContainer _localSettings = ApplicationData.Current.LocalSettings;
+
+        public AppMode AppMode
+        {
+            get;
+            set;
+        }
 
         public Color TargetColor
         {
@@ -29,10 +44,17 @@ namespace ObjectTrackingDemo
             set;
         }
 
+        private double _threshold;
         public double Threshold
         {
-            get;
-            set;
+            get
+            {
+                return _threshold;
+            }
+            set
+            {
+                _threshold = value;
+            }
         }
 
         public bool Flash
@@ -48,6 +70,18 @@ namespace ObjectTrackingDemo
         }
 
         public Mode Mode
+        {
+            get;
+            set;
+        }
+
+        public bool RemoveNoise
+        {
+            get;
+            set;
+        }
+
+        public bool ApplyEffectOnly
         {
             get;
             set;
@@ -73,6 +107,15 @@ namespace ObjectTrackingDemo
 
         public void Load()
         {
+            if (_localSettings.Values.ContainsKey(KeyAppMode))
+            {
+                AppMode = (AppMode)Enum.Parse(typeof(AppMode), (string)_localSettings.Values[KeyAppMode]);
+            }
+            else
+            {
+                AppMode = AppMode.Photo;
+            }
+
             if (_localSettings.Values.ContainsKey(KeyTargetColorR))
             {
                 byte r = (byte)_localSettings.Values[KeyTargetColorR];
@@ -113,6 +156,16 @@ namespace ObjectTrackingDemo
                 Mode = Mode.ChromaFilter;
             }
 
+            if (_localSettings.Values.ContainsKey(KeyRemoveNoise))
+            {
+                RemoveNoise = (bool)_localSettings.Values[KeyRemoveNoise];
+            }
+
+            if (_localSettings.Values.ContainsKey(KeyApplyEffectOnly))
+            {
+                ApplyEffectOnly = (bool)_localSettings.Values[KeyApplyEffectOnly];
+            }
+
             if (_localSettings.Values.ContainsKey(KeyIsoSpeedPreset))
             {
                 IsoSpeedPreset = (IsoSpeedPreset)Enum.Parse(typeof(IsoSpeedPreset), (string)_localSettings.Values[KeyIsoSpeedPreset]);
@@ -134,6 +187,7 @@ namespace ObjectTrackingDemo
 
         public void Save()
         {
+            _localSettings.Values[KeyAppMode] = AppMode.ToString();
             _localSettings.Values[KeyTargetColorR] = TargetColor.R;
             _localSettings.Values[KeyTargetColorG] = TargetColor.G;
             _localSettings.Values[KeyTargetColorB] = TargetColor.B;
@@ -141,6 +195,8 @@ namespace ObjectTrackingDemo
             _localSettings.Values[KeyFlash] = Flash;
             _localSettings.Values[KeyTorch] = Torch;
             _localSettings.Values[KeyMode] = Mode.ToString();
+            _localSettings.Values[KeyRemoveNoise] = RemoveNoise;
+            _localSettings.Values[KeyApplyEffectOnly] = ApplyEffectOnly;
             _localSettings.Values[KeyIsoSpeedPreset] = IsoSpeedPreset.ToString();
             _localSettings.Values[KeyExposure] = Exposure;
         }

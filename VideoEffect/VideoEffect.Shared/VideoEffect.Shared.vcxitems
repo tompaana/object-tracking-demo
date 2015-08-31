@@ -18,9 +18,11 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Effects\ChromaDeltaEffect.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Effects\ChromaFilterEffect.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Effects\EdgeDetectionEffect.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\NoiseRemovalEffect.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageAnalyzer.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingUtils.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Interop\InteropUtils.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Interop\PhotoProcessor.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -39,12 +41,16 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Effects\ChromaDeltaEffect.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Effects\ChromaFilterEffect.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Effects\EdgeDetectionEffect.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\NoiseRemovalEffect.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageAnalyzer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingCommon.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ImageProcessingUtils.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\ObjectDetails.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\SimpleYuvPixel.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\Yuy2Pixel.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Interop\InteropUtils.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Interop\MessengerInterface.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Interop\PhotoProcessor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Settings.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\AbstractTransform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\BufferTransform.h" />

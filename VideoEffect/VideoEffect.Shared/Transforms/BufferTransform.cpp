@@ -230,9 +230,8 @@ HRESULT CBufferTransform::OnProcessOutput(IMFMediaBuffer *pIn, IMFMediaBuffer *p
     }
 
     // Just pass the image through as-is
-    assert(m_effect != NULL);
     ImageProcessingUtils::copyFrame(pSrc, pDest,
-        ImageProcessingUtils::frameSize(m_imageWidthInPixels, m_imageHeightInPixels, m_effect->videoFormatSubtype()));
+        ImageProcessingUtils::frameSize(m_imageWidthInPixels, m_imageHeightInPixels, m_videoFormatSubtype));
 
     // Set the data size on the output buffer.
     hr = pOut->SetCurrentLength(m_cbImageSize);
@@ -334,18 +333,8 @@ HRESULT CBufferTransform::ProcessInput(
 
     if (frameRequestId > 0)
     {
-        /*UINT8 previousFrameBufferIndex = PreviousBufferIndex(m_currentBufferIndex);
-
-        if (m_frameRingBuffer[previousFrameBufferIndex])
-        {
-            // Provide the previous frame in the buffer
-            NotifyFrameCaptured(previousFrameBufferIndex, frameRequestId);
-        }
-        else
-        {*/
-            // Provide the current sample
-            NotifyFrameCaptured(pSample, frameRequestId);
-        //}
+        // Provide the current sample
+        NotifyFrameCaptured(pSample, frameRequestId);
     }
 
     if (m_messenger->State() == VideoEffectState::Triggered)
@@ -379,7 +368,7 @@ HRESULT CBufferTransform::ProcessInput(
         UINT8 toIndexFromLastFrame = CalculateBufferIndex(m_currentBufferIndex, -((int)BufferSize) + 3);
 
         if (GetFirstFrameWithObject(
-            m_bufferIndexWhenTriggered, previousBufferIndexFromTriggeredFrame, false,
+                m_bufferIndexWhenTriggered, previousBufferIndexFromTriggeredFrame, false,
                 closestBufferIndexToTriggeredWithObject, objectDetailsCloseToTriggeredFrame)
             && GetFirstFrameWithObject(
                 m_currentBufferIndex, toIndexFromLastFrame, false,
@@ -756,17 +745,13 @@ ObjectDetails* CBufferTransform::GetObjectFromFrame(const UINT8 &frameIndex)
             m_rcDest, processedFrame, stride, frame, stride,
             m_imageWidthInPixels, m_imageHeightInPixels);
 
-        objectDetails = new ObjectDetails();
-        *objectDetails = dynamic_cast<ChromaFilterEffect*>(m_effect)->currentObject();
-
         ConvexHull *convexHull =
-            m_imageAnalyzer->bestConvexHullDetails(
+            m_imageAnalyzer->extractBestCircularConvexHull(
                 processedFrame, m_imageWidthInPixels, m_imageHeightInPixels, 3, m_effect->videoFormatSubtype());
 
         if (convexHull)
         {
-            delete objectDetails;
-            objectDetails = m_imageAnalyzer->convexHullDimensionsAsObjectDetails(*convexHull);
+            objectDetails = m_imageAnalyzer->convexHullMinimalEnclosingCircleAsObjectDetails(*convexHull);
         }
 
         delete[] processedFrame;

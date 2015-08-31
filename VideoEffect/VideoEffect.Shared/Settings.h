@@ -16,5 +16,7 @@ public:
     float m_targetYuv[3];
     float m_threshold;
     int m_mode;
+    bool m_removeNoise;
+    bool m_applyEffectOnly;
 };
 

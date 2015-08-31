@@ -21,6 +21,8 @@ namespace VideoEffect
         virtual bool IsSettingsChangedFlagRaised();
         virtual float Threshold();
         virtual Platform::Array<float, 1>^ TargetYuv();
+        virtual bool RemoveNoise();
+        virtual bool ApplyEffectOnly();
 
         virtual bool IsModeChangedFlagRaised();
         virtual int Mode();

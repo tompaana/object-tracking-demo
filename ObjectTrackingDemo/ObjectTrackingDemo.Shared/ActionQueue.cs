@@ -9,7 +9,7 @@ namespace ObjectTrackingDemo
     {
         private Timer _executeTimer;
 
-        public enum States
+        public enum VideoEffectState
         {
             Idle = 0,
             Executing,
@@ -18,7 +18,7 @@ namespace ObjectTrackingDemo
 
         private List<Action> _actionList;
 
-        public States State
+        public VideoEffectState State
         {
             get;
             private set;
@@ -59,16 +59,16 @@ namespace ObjectTrackingDemo
 
             switch (State)
             {
-                case States.Idle:
-                case States.Queued: // State machine transition: Idle/Queued -> Executing
+                case VideoEffectState.Idle:
+                case VideoEffectState.Queued: // State machine transition: Idle/Queued -> Executing
                     if (ExecuteIntervalInMilliseconds == 0)
                     {
                         ExecuteLastAction();
                     }
 
                     break;
-                case States.Executing: // State machine transition: Executing -> Queued
-                    State = States.Queued;
+                case VideoEffectState.Executing: // State machine transition: Executing -> Queued
+                    State = VideoEffectState.Queued;
                     break;
                 default:
                     // Do nothing
@@ -80,7 +80,7 @@ namespace ObjectTrackingDemo
         {
             if (_actionList.Count > 0)
             {
-                State = States.Executing;
+                State = VideoEffectState.Executing;
 
                 // Execute the action, which was added last and ignore the rest
                 Action lastAction = _actionList[_actionList.Count - 1];
@@ -89,10 +89,10 @@ namespace ObjectTrackingDemo
 
                 switch (State)
                 {
-                    case States.Executing:
-                        State = States.Idle;
+                    case VideoEffectState.Executing:
+                        State = VideoEffectState.Idle;
                         break;
-                    case States.Queued:
+                    case VideoEffectState.Queued:
                         if (ExecuteIntervalInMilliseconds == 0)
                         {
                             // Execute next action immediately
@@ -107,7 +107,7 @@ namespace ObjectTrackingDemo
             }
             else
             {
-                State = States.Idle;
+                State = VideoEffectState.Idle;
             }
         }
 

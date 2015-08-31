@@ -35,6 +35,12 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform.cpp">
       <Filter>Transforms</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Effects\NoiseRemovalEffect.cpp">
+      <Filter>Effects</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Interop\PhotoProcessor.cpp">
+      <Filter>Interop</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Common.h" />
@@ -84,6 +90,18 @@
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Transforms\RealtimeTransform_h.h">
       <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Effects\NoiseRemovalEffect.h">
+      <Filter>Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\SimpleYuvPixel.h">
+      <Filter>ImageProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ImageProcessing\Yuy2Pixel.h">
+      <Filter>ImageProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Interop\PhotoProcessor.h">
+      <Filter>Interop</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

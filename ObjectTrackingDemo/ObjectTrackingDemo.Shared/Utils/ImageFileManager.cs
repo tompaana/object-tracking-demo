@@ -29,26 +29,75 @@ using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 
 namespace ObjectTrackingDemo
 {
+    public class ImageData : IDisposable
+    {
+        public MemoryStream ImageMemoryStream
+        {
+            get;
+            set;
+        }
+
+        public int ImageWidthInPixels
+        {
+            get;
+            set;
+        }
+
+        public int ImageHeightInPixels
+        {
+            get;
+            set;
+        }
+
+        public void Initialize()
+        {
+            Dispose();
+            ImageMemoryStream = new MemoryStream();
+        }
+
+        public void SeekStreamToBeginning()
+        {
+            if (ImageMemoryStream != null)
+            {
+                ImageMemoryStream.Seek(0, SeekOrigin.Begin);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (ImageMemoryStream != null)
+            {
+                ImageMemoryStream.Dispose();
+            }
+
+            ImageWidthInPixels = 0;
+            ImageHeightInPixels = 0;
+        }
+    }
+
     /// <summary>
     /// A utility class for loading and saving image files to the file system.
     /// </summary>
     public class ImageFileManager
     {
         private const string DebugTag = "ImageFileManager: ";
+        private const string KeyOperation = "Operation";
         private const string SelectImageOperationName = "SelectImage";
         private const string SelectDestinationOperationName = "SelectDestination";
         private const string JpegFileTypeDescription = "JPEG file";
-
-        private IBuffer _imageBuffer;
         private readonly string[] _supportedImageFilePostfixes = { ".jpg", ".jpeg", ".png" };
         private readonly List<string> _supportedSaveImageFilePostfixes = new List<string> { ".jpg" };
 
         public event EventHandler<bool> ImageFileLoadedResult;
         public event EventHandler<bool> ImageFileSavedResult;
+
+        private WriteableBitmap _writeableBitmapToSave;
+        private IBuffer _imageBufferToSave;
 
         private static ImageFileManager _instance;
         public static ImageFileManager Instance
@@ -64,13 +113,7 @@ namespace ObjectTrackingDemo
             }
         }
 
-        public MemoryStream FullResolutionStream
-        {
-            get;
-            set;
-        }
-
-        public string NameOfSavedFile
+        public ImageData ImageData
         {
             get;
             private set;
@@ -78,14 +121,13 @@ namespace ObjectTrackingDemo
 
         private ImageFileManager()
         {
-            FullResolutionStream = new MemoryStream();
+            ImageData = new ImageData();
         }
 
-        public void ResetStreams()
-        {
-            FullResolutionStream.Seek(0, SeekOrigin.Begin);
-        }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         public async Task<bool> GetImageFileAsync()
         {
             bool success = false;
@@ -105,7 +147,7 @@ namespace ObjectTrackingDemo
             }
 
 #if WINDOWS_PHONE_APP
-            picker.ContinuationData["Operation"] = SelectImageOperationName;
+            picker.ContinuationData[KeyOperation] = SelectImageOperationName;
             picker.PickSingleFileAndContinue();
             success = true;
 #else
@@ -120,38 +162,27 @@ namespace ObjectTrackingDemo
         }
 
         /// <summary>
-        /// 
+        /// Saves the given writeable bitmap to a file.
+        /// </summary>
+        /// <param name="writeableBitmap">The writeable bitmap to save.</param>
+        /// <param name="filenamePrefix">The desired prefix for the filename.</param>
+        /// <returns>True if successful, false otherwise.</returns>
+        public async Task<bool> SaveImageFileAsync(WriteableBitmap writeableBitmap, string filenamePrefix)
+        {
+            _writeableBitmapToSave = writeableBitmap;
+            return await SaveImageFileAsync(filenamePrefix);
+        }
+
+        /// <summary>
+        /// Saves the given image buffer to a file.
         /// </summary>
         /// <param name="imageBuffer"></param>
-        /// <returns></returns>
-        public async Task<bool> SaveImageFileAsync(IBuffer imageBuffer)
+        /// <param name="filenamePrefix">The desired prefix for the filename.</param>
+        /// <returns>True if successful, false otherwise.</returns>
+        public async Task<bool> SaveImageFileAsync(IBuffer imageBuffer, string filenamePrefix)
         {
-            _imageBuffer = imageBuffer;
-            bool success = false;
-
-            var picker = new FileSavePicker
-            {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary
-            };
-
-            picker.FileTypeChoices.Add(JpegFileTypeDescription, _supportedSaveImageFilePostfixes);
-            picker.SuggestedFileName = "FE_" + FormattedDateTime() + _supportedSaveImageFilePostfixes[0];
-            System.Diagnostics.Debug.WriteLine(DebugTag + "SaveImageFile(): Suggested filename is " + picker.SuggestedFileName);
-
-#if WINDOWS_PHONE_APP
-            picker.ContinuationData["Operation"] = SelectDestinationOperationName;
-            picker.PickSaveFileAndContinue();
-            success = true;
-#else
-            StorageFile file = await picker.PickSaveFileAsync();
-
-            if (file != null)
-            {
-                success = await SaveImageFileAsync(file);
-                NameOfSavedFile = file.Name;
-            }
-#endif
-            return success;
+            _imageBufferToSave = imageBuffer;
+            return await SaveImageFileAsync(filenamePrefix);
         }
 
 #if WINDOWS_PHONE_APP
@@ -160,8 +191,10 @@ namespace ObjectTrackingDemo
             System.Diagnostics.Debug.WriteLine(DebugTag + "ContinueFileOpenPicker()");
             bool success = false;
 
-            if (args.Files == null || args.Files.Count == 0 || args.Files[0] == null
-                || (args.ContinuationData["Operation"] as string) != SelectImageOperationName)
+            if (args.Files == null
+                || args.Files.Count == 0
+                || args.Files[0] == null
+                || (args.ContinuationData[KeyOperation] as string) != SelectImageOperationName)
             {
                 System.Diagnostics.Debug.WriteLine(DebugTag + "ContinueFileOpenPicker(): Invalid arguments!");
             }
@@ -181,10 +214,14 @@ namespace ObjectTrackingDemo
             bool success = false;
             StorageFile file = args.File;
 
-            if (file != null && (args.ContinuationData["Operation"] as string) == SelectDestinationOperationName)
+            if (file != null && (args.ContinuationData[KeyOperation] as string) == SelectDestinationOperationName)
             {
                 success = await SaveImageFileAsync(file);
-                NameOfSavedFile = file.Name;
+            }
+            else
+            {
+                _writeableBitmapToSave = null;
+                _imageBufferToSave = null;
             }
 
             NotifySavedResult(success);
@@ -202,15 +239,15 @@ namespace ObjectTrackingDemo
         /// <returns>True if successful, false otherwise.</returns>
         private async Task<bool> HandleSelectedImageFileAsync(StorageFile file)
         {
-            System.Diagnostics.Debug.WriteLine(DebugTag + "HandleSelectedImageFile(): " + file.Name);
+            System.Diagnostics.Debug.WriteLine(DebugTag + "HandleSelectedImageFileAsync(): " + file.Name);
             var fileStream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read);
 
-            ResetStreams();
+            ImageData.Initialize();
 
             var image = new BitmapImage();
             image.SetSource(fileStream);
-            int width = image.PixelWidth;
-            int height = image.PixelHeight;
+            ImageData.ImageWidthInPixels = image.PixelWidth;
+            ImageData.ImageHeightInPixels = image.PixelHeight;
 
             bool success = false;
 
@@ -219,7 +256,8 @@ namespace ObjectTrackingDemo
                 // JPEG images can be used as such
                 Stream stream = fileStream.AsStream();
                 stream.Position = 0;
-                stream.CopyTo(FullResolutionStream);
+                stream.CopyTo(ImageData.ImageMemoryStream);
+                stream.Dispose();
                 success = true;
             }
             catch (Exception e)
@@ -233,7 +271,10 @@ namespace ObjectTrackingDemo
                 try
                 {
                     await ImageProcessingUtils.FileStreamToJpegStreamAsync(fileStream,
-                        (IRandomAccessStream)FullResolutionStream.AsInputStream());
+                        ImageData.ImageWidthInPixels,
+                        ImageData.ImageHeightInPixels,
+                        (IRandomAccessStream)ImageData.ImageMemoryStream.AsInputStream());
+
                     success = true;
                 }
                 catch (Exception e)
@@ -244,23 +285,98 @@ namespace ObjectTrackingDemo
                 }
             }
 
+            fileStream.Dispose();
+            ImageData.SeekStreamToBeginning();
             return success;
         }
 
         /// <summary>
-        /// 
+        /// Initiates saving the previously set image data to a file.
         /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
+        /// <param name="filenamePrefix">The desired prefix for the filename.</param>
+        /// <returns>True if successful, false otherwise.</returns>
+        private async Task<bool> SaveImageFileAsync(string filenamePrefix)
+        {
+            bool success = false;
+
+            var picker = new FileSavePicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
+
+            picker.FileTypeChoices.Add(JpegFileTypeDescription, _supportedSaveImageFilePostfixes);
+            picker.SuggestedFileName = filenamePrefix + FormattedCurrentDateTimeString() + _supportedSaveImageFilePostfixes[0];
+            System.Diagnostics.Debug.WriteLine(DebugTag + "SaveImageFileAsync(): Suggested filename is " + picker.SuggestedFileName);
+
+#if WINDOWS_PHONE_APP
+            picker.ContinuationData[KeyOperation] = SelectDestinationOperationName;
+            picker.PickSaveFileAndContinue();
+            success = true;
+#else
+            StorageFile file = await picker.PickSaveFileAsync();
+
+            if (file != null)
+            {
+                success = await SaveImageFileAsync(file);
+            }
+            else
+            {
+                _writeableBitmapToSave = null;
+                _imageBufferToSave = null;
+            }
+#endif
+            return success;
+        }
+
+        /// <summary>
+        /// Saves the local image buffer to the the given file.
+        /// </summary>
+        /// <param name="file">The file where to save the image buffer.</param>
+        /// <returns>True if successful, false otherwise.</returns>
         private async Task<bool> SaveImageFileAsync(StorageFile file)
         {
-            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            bool success = false;
+
+            try
             {
-                await stream.WriteAsync(_imageBuffer);
-                await stream.FlushAsync();
+                using (IRandomAccessStream fileStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                {
+                    if (_imageBufferToSave != null)
+                    {
+                        await fileStream.WriteAsync(_imageBufferToSave);
+                        await fileStream.FlushAsync();
+                    }
+                    else if (_writeableBitmapToSave != null)
+                    {
+                        Guid bitmapEncoderGuid = BitmapEncoder.JpegEncoderId;
+                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(bitmapEncoderGuid, fileStream);
+                        Stream pixelStream = _writeableBitmapToSave.PixelBuffer.AsStream();
+                        byte[] pixelArray = new byte[pixelStream.Length];
+                        await pixelStream.ReadAsync(pixelArray, 0, pixelArray.Length);
+
+                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
+                                            (uint)_writeableBitmapToSave.PixelWidth,
+                                            (uint)_writeableBitmapToSave.PixelHeight,
+                                            96.0,
+                                            96.0,
+                                            pixelArray);
+                        await encoder.FlushAsync();
+                    }
+                    else
+                    {
+                        throw new Exception("No data to save");
+                    }
+                }
+
+                success = true;
+            }
+            catch (Exception)
+            {
             }
 
-            return true;
+            _writeableBitmapToSave = null;
+            _imageBufferToSave = null;
+            return success;
         }
 
         /// <summary>
@@ -293,15 +409,9 @@ namespace ObjectTrackingDemo
             }
         }
 
-        private string FormattedDateTime()
+        private string FormattedCurrentDateTimeString()
         {
-            string dateTimeString = DateTime.Now.ToString();
-            dateTimeString = dateTimeString.Replace('\\', '-');
-            dateTimeString = dateTimeString.Replace('/', '-');
-            dateTimeString = dateTimeString.Replace(' ', '_');
-            dateTimeString = dateTimeString.Replace('.', '_');
-            dateTimeString = dateTimeString.Replace(":", "");
-            return dateTimeString;
+            return string.Format("{0:yyyy-mm-dd_Hmmss}", DateTimeOffset.Now);
         }
     }
 }

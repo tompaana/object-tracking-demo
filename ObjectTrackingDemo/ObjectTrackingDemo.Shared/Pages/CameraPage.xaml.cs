@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ObjectTrackingDemo.Common;
 using Windows.ApplicationModel.Core;
 using Windows.Foundation;
 using Windows.Media.Capture;
@@ -18,10 +19,8 @@ using Windows.UI.Xaml.Shapes;
 
 namespace ObjectTrackingDemo
 {
-    public sealed partial class MainPage : Page
+    public sealed partial class CameraPage : Page
     {
-        private const string VideoEncodingPropertiesSubTypeYUV2 = "YUY2";
-        private const string VideoEncodingPropertiesSubTypeMJPG = "MJPG";
         private const int ColorPickFrameRequestId = 42;
 
         public Visibility ControlsVisibility
@@ -36,29 +35,42 @@ namespace ObjectTrackingDemo
             }
         }
         public static readonly DependencyProperty ControlsVisibilityProperty =
-            DependencyProperty.Register("ControlsVisibility", typeof(Visibility), typeof(MainPage),
+            DependencyProperty.Register("ControlsVisibility", typeof(Visibility), typeof(CameraPage),
                 new PropertyMetadata(Visibility.Visible));
 
         private VideoEngine _videoEngine;
         private ActionQueue _actionQueue;
+        private Settings _settings;
         private MediaElement _lockedSound;
         private Timer _hideCapturePhotoImageTimer;
         private Timer _updateInfoTextTimer;
         private Point _viewFinderCanvasTappedPoint;
+        private NavigationHelper _navigationHelper;
 
-        public MainPage()
+        /// <summary>
+        /// Gets the <see cref="NavigationHelper"/> associated with this <see cref="Page"/>.
+        /// </summary>
+        public NavigationHelper NavigationHelper
+        {
+            get { return this._navigationHelper; }
+        }
+
+        public CameraPage()
         {
             InitializeComponent();
+
+            _navigationHelper = new NavigationHelper(this);
 
             controlBar.HideButtonClicked += OnHideButtonClicked;
             controlBar.ToggleEffectButtonClicked += OnToggleEffectButtonClickedAsync;
             controlBar.ToggleFlashButtonClicked += OnToggleFlashButtonClicked;
             controlBar.SettingsButtonClicked += OnSettingsButtonClicked;
+            effectSettingsControl.ColorButtonClicked += OnColorPickerButtonClicked;
+            effectSettingsControl.SliderValueChanged += OnSliderValueChanged;
 
             _videoEngine = VideoEngine.Instance;
-
-            colorPickerControl.CurrentColor = Settings.DefaultTargetColor;
-            thresholdSlider.Value = 0;
+            
+            _settings = App.Settings;
 
             NavigationCacheMode = NavigationCacheMode.Required;
 
@@ -82,18 +94,18 @@ namespace ObjectTrackingDemo
             _actionQueue = new ActionQueue();
             _actionQueue.ExecuteIntervalInMilliseconds = 500;
 
-            App.Settings.Load();
-
             await InitializeAndStartVideoEngineAsync();
 
-            SetColor(App.Settings.TargetColor, false);
-            SetThreshold(App.Settings.Threshold);
-            SetFlash(App.Settings.Flash, false);
+            SetColor(_settings.TargetColor, false);
+            SetThreshold(_settings.Threshold);
+            SetFlash(_settings.Flash, false);
 
             controlBar.IsEffectOn = _videoEngine.EffectSet;
 
             colorPickerControl.ColorChanged += OnColorPickerControlColorChanged;
             settingsPanelControl.ModeChanged += _videoEngine.OnModeChanged;
+            settingsPanelControl.RemoveNoiseChanged += _videoEngine.OnRemoveNoiseChanged;
+            settingsPanelControl.ApplyEffectOnlyChanged += _videoEngine.OnApplyEffectOnlyChanged;
             settingsPanelControl.IsoChanged += _videoEngine.OnIsoSettingsChangedAsync;
             settingsPanelControl.ExposureChanged += _videoEngine.OnExposureSettingsChangedAsync;
             _videoEngine.StateManager.StateChanged += OnEffectStateChangedAsync;
@@ -110,10 +122,12 @@ namespace ObjectTrackingDemo
         {
             _videoEngine.Torch = false;
             _actionQueue.Dispose();
-            App.Settings.Save();
+            _settings.Save();
 
             colorPickerControl.ColorChanged -= OnColorPickerControlColorChanged;
             settingsPanelControl.ModeChanged -= _videoEngine.OnModeChanged;
+            settingsPanelControl.RemoveNoiseChanged -= _videoEngine.OnRemoveNoiseChanged;
+            settingsPanelControl.ApplyEffectOnlyChanged -= _videoEngine.OnApplyEffectOnlyChanged;
             settingsPanelControl.IsoChanged -= _videoEngine.OnIsoSettingsChangedAsync;
             settingsPanelControl.ExposureChanged -= _videoEngine.OnExposureSettingsChangedAsync;
             _videoEngine.StateManager.StateChanged -= OnEffectStateChangedAsync;
@@ -141,10 +155,9 @@ namespace ObjectTrackingDemo
             {
                 captureElement.Source = _videoEngine.MediaCapture;
 
-                _videoEngine.Mode = App.Settings.Mode;
-                App.Settings.SupportedIsoSpeedPresets = _videoEngine.SupportedIsoSpeedPresets;
-                await _videoEngine.SetIsoSpeedAsync(App.Settings.IsoSpeedPreset);
-                await _videoEngine.SetExposureAsync(App.Settings.Exposure);
+                _settings.SupportedIsoSpeedPresets = _videoEngine.SupportedIsoSpeedPresets;
+                await _videoEngine.SetIsoSpeedAsync(_settings.IsoSpeedPreset);
+                await _videoEngine.SetExposureAsync(_settings.Exposure);
 
                 success = await _videoEngine.StartAsync();
             }
@@ -163,19 +176,19 @@ namespace ObjectTrackingDemo
         private void SetColor(Color newColor, bool saveSettings = true)
         {
             colorPickerControl.CurrentColor = newColor;
-            App.Settings.TargetColor = newColor;
+            _settings.TargetColor = newColor;
 
             if (colorPickerControl.Visibility == Visibility.Visible)
             {
                 colorPickerControl.PreviewColor = newColor;
             }
 
-            byte[] yuv = ImageProcessingUtils.RGBToYUV(newColor.R, newColor.G, newColor.B);
+            byte[] yuv = ImageProcessingUtils.RgbToYuv(newColor.R, newColor.G, newColor.B);
             _videoEngine.SetYuv(yuv);
 
             if (saveSettings)
             {
-                App.Settings.Save();
+                _settings.Save();
             }
         }
 
@@ -185,7 +198,7 @@ namespace ObjectTrackingDemo
         /// <param name="threshold">The new threshold value.</param>
         private void SetThreshold(double threshold)
         {
-            thresholdSlider.Value = threshold;
+            effectSettingsControl.SliderValue = threshold;
         }
 
         /// <summary>
@@ -196,13 +209,13 @@ namespace ObjectTrackingDemo
         private void SetFlash(bool enabled, bool saveSettings = true)
         {
             _videoEngine.Flash = _videoEngine.Torch = enabled;
-            App.Settings.Flash = App.Settings.Torch = _videoEngine.Torch;
+            _settings.Flash = _settings.Torch = _videoEngine.Torch;
 
             controlBar.IsFlashOn = _videoEngine.Torch;
 
             if (saveSettings)
             {
-                App.Settings.Save();
+                _settings.Save();
             }
         }
 
@@ -230,26 +243,6 @@ namespace ObjectTrackingDemo
             rectangleTransform.X = (objectDetails.centerX - _videoEngine.ResolutionWidth / 2) * scaleX;
             rectangleTransform.Y = (objectDetails.centerY - _videoEngine.ResolutionHeight / 2) * scaleY;
 #endif
-        }
-
-        /// <summary>
-        /// Converts the given pixel array into a writeable bitmap.
-        /// </summary>
-        /// <param name="pixelArray">The pixel array.</param>
-        /// <param name="width">The width of the image in pixels.</param>
-        /// <param name="height">The height of the image in pixels.</param>
-        /// <returns></returns>
-        private async Task<WriteableBitmap> PixelArrayToWriteableBitmapAsync(byte[] pixelArray, int width, int height)
-        {
-            string videoRecordFormat = CameraUtils.ResolveVideoRecordFormat(_videoEngine.MediaCapture);
-
-            WriteableBitmap bitmap =
-                (videoRecordFormat.Equals(VideoEncodingPropertiesSubTypeYUV2)
-                 || videoRecordFormat.Equals(VideoEncodingPropertiesSubTypeMJPG))
-                    ? await ImageProcessingUtils.YUY2PixelArrayToWriteableBitmapAsync(pixelArray, width, height)
-                    : await ImageProcessingUtils.NV12PixelArrayToWriteableBitmapAsync(pixelArray, width, height);
-
-            return bitmap;
         }
 
         #region Timer callbacks
@@ -313,7 +306,7 @@ namespace ObjectTrackingDemo
                 _actionQueue.Dispose();
                 _actionQueue = null;
 
-                App.Settings.Save();
+                _settings.Save();
 
                 _videoEngine.StateManager.StateChanged -= OnEffectStateChangedAsync;
                 _videoEngine.Messenger.FrameCaptured -= OnFrameCapturedAsync;
@@ -397,7 +390,7 @@ namespace ObjectTrackingDemo
 
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                WriteableBitmap bitmap = await PixelArrayToWriteableBitmapAsync(pixelArray, frameWidth, frameHeight);
+                WriteableBitmap bitmap = await ImageProcessingUtils.PixelArrayToWriteableBitmapAsync(pixelArray, frameWidth, frameHeight);
 
                 if (bitmap != null)
                 {
@@ -434,7 +427,7 @@ namespace ObjectTrackingDemo
         {
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                WriteableBitmap bitmap = await PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight);
+                WriteableBitmap bitmap = await ImageProcessingUtils.PixelArrayToWriteableBitmapAsync(pixelArray, imageWidth, imageHeight);
 
                 if (bitmap != null)
                 {
@@ -484,15 +477,15 @@ namespace ObjectTrackingDemo
                 _updateInfoTextTimer = null;
             }
 
-            infoTextBlock.Text = "";
+            infoTextBlock.Text = "Paha ObjectTrackingDemo";
 
             if (_videoEngine.EffectSet)
             {
-                _videoEngine.SetThreshold((float)thresholdSlider.Value);
+                _videoEngine.SetThreshold((float)effectSettingsControl.SliderValue);
                 _updateInfoTextTimer = new Timer(UpdateInfoTextAsync, null, 1000, 1000);
             }
 
-            App.Settings.Save();
+            _settings.Save();
         }
 
         private void OnToggleFlashButtonClicked(object sender, RoutedEventArgs e)
@@ -520,7 +513,7 @@ namespace ObjectTrackingDemo
                 return;
             }
 
-            colorPickerControl.PreviewColor = App.Settings.TargetColor;
+            colorPickerControl.PreviewColor = _settings.TargetColor;
             colorPickerControl.Visibility = Visibility.Visible;
         }
 
@@ -540,8 +533,22 @@ namespace ObjectTrackingDemo
                  );
             }
 
-            App.Settings.Threshold = newThreshold;
-            thresholdTextBlock.Text = "Threshold: " + newThreshold;
+            _settings.Threshold = newThreshold;
+            effectSettingsControl.SetSliderText("Threshold: " + newThreshold);
+        }
+
+        private void OnSwitchToPhotosButtonClicked(object sender, RoutedEventArgs e)
+        {
+            if (Frame.BackStack.Count == 0)
+            {
+                _settings.AppMode = AppMode.Photo;
+                _settings.Save();
+                Frame.Navigate(typeof(PhotoPage));
+            }
+            else
+            {
+                NavigationHelper.GoBack();
+            }            
         }
 
         /// <summary>

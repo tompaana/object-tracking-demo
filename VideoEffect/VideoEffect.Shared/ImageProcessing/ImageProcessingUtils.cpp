@@ -45,10 +45,10 @@ ImageProcessingUtils::~ImageProcessingUtils()
 //-------------------------------------------------------------------
 void ImageProcessingUtils::drawLine(
     BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight,
-    const D2D1_POINT_2U& point1, D2D1_POINT_2U& point2,
+    const D2D1_POINT_2U& point1, const D2D1_POINT_2U& point2,
     const GUID& videoFormatSubtype,
     const UINT32& thickness,
-    const BYTE& yy, const BYTE& u, const BYTE& v)
+    const BYTE& yy, const BYTE& u, const BYTE& v) const
 {
     if (videoFormatSubtype == MFVideoFormat_NV12)
     {
@@ -571,8 +571,15 @@ BYTE* ImageProcessingUtils::mergeFramesYUY2(
 //
 // 
 //------------------------------------------------------------------
-UINT16* ImageProcessingUtils::createObjectMap(BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight, const GUID& videoFormatSubtype)
+UINT16* ImageProcessingUtils::createObjectMap(
+    BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight,
+    const D2D_RECT_U& targetRect, const GUID& videoFormatSubtype)
 {
+    if (!validateRect(targetRect, imageWidth, imageHeight))
+    {
+        return NULL;
+    }
+
     BYTE* yyImage = NULL;
 
     // Create temporary array to pack all yy values used in the algorithm
@@ -583,10 +590,10 @@ UINT16* ImageProcessingUtils::createObjectMap(BYTE* image, const UINT32& imageWi
     }
     else if (videoFormatSubtype == MFVideoFormat_YUY2)
     {
-        int len = imageWidth * imageHeight;
-        yyImage = new BYTE[len];
+        const int length = imageWidth * imageHeight;
+        yyImage = new BYTE[length];
 
-        for (int i = 0; i < len; i++)
+        for (int i = 0; i < length; i++)
         {
             yyImage[i] = image[i * 2];
         }
@@ -598,7 +605,7 @@ UINT16* ImageProcessingUtils::createObjectMap(BYTE* image, const UINT32& imageWi
 
     UINT16* objectMap = new UINT16[imageWidth * imageHeight];
     memset(objectMap, 0, imageWidth * imageHeight * sizeof(UINT16));
-    int currentIndex = 0;
+    UINT32 currentIndex = 0;
     int cornerCase = 0;
     int pixelAboveIndex = 0;
     UINT16 highestObjectIndex = 0;
@@ -606,11 +613,21 @@ UINT16* ImageProcessingUtils::createObjectMap(BYTE* image, const UINT32& imageWi
     UINT16 bridgedObjectIndex = 0;
     bool previousPixelWasEmpty = true;
 
-    for (UINT32 y = 0; y < imageHeight; ++y)
+    if (targetRect.top > 0)
+    {
+        currentIndex += imageWidth * targetRect.top;
+    }
+
+    for (UINT32 y = targetRect.top; y < targetRect.bottom; ++y)
     {
         previousPixelWasEmpty = true;
 
-        for (UINT32 x = 0; x < imageWidth; ++x)
+        if (targetRect.left > 0)
+        {
+            currentIndex += targetRect.left;
+        }
+
+        for (UINT32 x = targetRect.left; x < targetRect.right; ++x)
         {
             if (yyImage[currentIndex] == SelectedPixelValue)
             {
@@ -669,6 +686,11 @@ UINT16* ImageProcessingUtils::createObjectMap(BYTE* image, const UINT32& imageWi
             }
 
             currentIndex++;
+        }
+
+        if (targetRect.right < imageWidth)
+        {
+            currentIndex += (imageWidth - targetRect.right);
         }
     }
 
@@ -909,7 +931,7 @@ inline UINT16 ImageProcessingUtils::objectIdOfPixelAbove(
 // Returns false, if no equations could be calculated (when delta X
 // is zero).
 //------------------------------------------------------------------
-bool ImageProcessingUtils::calculateLineEquation(const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, double* a, int* b)
+bool ImageProcessingUtils::calculateLineEquation(const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, double* a, int* b) const
 {
     int deltaX = (int)(point2.x) - (int)(point1.x);
 
@@ -929,7 +951,7 @@ bool ImageProcessingUtils::calculateLineEquation(const D2D_POINT_2U& point1, con
 //
 //------------------------------------------------------------------
 D2D_RECT_U ImageProcessingUtils::lineBoundingBox(
-    const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, bool leftAndRightHaveToHaveEvenValues)
+    const D2D_POINT_2U& point1, const D2D_POINT_2U& point2, bool leftAndRightHaveToHaveEvenValues) const
 {
     D2D_RECT_U rect;
     rect.left = point1.x < point2.x ? point1.x : point2.x;
@@ -992,6 +1014,26 @@ void ImageProcessingUtils::visualizeObjectNV12(
 
             currentIndex += 2;
         }
+    }
+}
+
+
+//------------------------------------------------------------------
+// visualizeConvexHull
+//
+//------------------------------------------------------------------
+void ImageProcessingUtils::visualizeConvexHull(
+    BYTE* image, const UINT32& imageWidth, const UINT32& imageHeight,
+    const ConvexHull& convexHull, const GUID& videoFormatSubtype,
+    const UINT32& lineThickness,
+    const BYTE& y, const BYTE& u, const BYTE& v) const
+{
+    for (UINT32 i = 0; i < convexHull.size() - 1; ++i)
+    {
+        drawLine(
+            image, imageWidth, imageHeight,
+            convexHull.at(i), convexHull.at(i + 1),
+            videoFormatSubtype, lineThickness, y, u, v);
     }
 }
 

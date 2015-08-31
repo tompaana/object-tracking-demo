@@ -1,5 +1,5 @@
 ﻿<Page
-    x:Class="ObjectTrackingDemo.MainPage"
+    x:Class="ObjectTrackingDemo.CameraPage"
     x:Name="thisPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -87,47 +87,40 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
             Visibility="{Binding Path=ControlsVisibility, ElementName=thisPage}" />
+
+        <Grid
+            VerticalAlignment="Bottom"
+            Background="#80000000"
+            Visibility="{Binding Path=ControlsVisibility, ElementName=thisPage}">
+            <!-- Color picker button and slider for controlling the threshold -->
+            <local:EffectSettingsControl
+                x:Name="effectSettingsControl"
+                Margin="12,6"
+                ColorButtonColor="{Binding Path=CurrentColor, ElementName=colorPickerControl}" />
+        </Grid>
         
         <Grid
-            Margin="24"
-            VerticalAlignment="Bottom"
-            Background="Transparent"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
             Visibility="{Binding Path=ControlsVisibility, ElementName=thisPage}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            
-            <Button
-                x:Name="colorPickerButton"
-                Grid.Column="0"
-                Width="50"
-                Height="50"
-                VerticalAlignment="Center"
-                Content=""
-                Click="OnColorPickerButtonClicked">
-                <Button.Background>
-                    <SolidColorBrush Color="{Binding CurrentColor, ElementName=colorPickerControl}" />
-                </Button.Background>
-            </Button>
-            <StackPanel
-                Grid.Column="1"
-                Margin="36,0"
-                VerticalAlignment="Center">
-                <TextBlock
-                    x:Name="thresholdTextBlock"
-                    Margin="0,24,0,0"
-                    Style="{ThemeResource BaseTextBlockStyle}"
-                    Foreground="White"
-                    Text="" />
-                <Slider
-                    x:Name="thresholdSlider"
-                    Margin="0,-12,0,0"
-                    Minimum="0"
-                    Maximum="128"
-                    ValueChanged="OnSliderValueChanged" />
-            </StackPanel>
+            <Rectangle
+                Margin="-48,-48,0,0"
+                RadiusX="50"
+                RadiusY="50"
+                Fill="#50000000" />
+            <AppBarButton
+                Icon="BrowsePhotos"
+                Label="switch to photos"
+                Click="OnSwitchToPhotosButtonClicked" />
         </Grid>
+
+        <ProgressBar
+            x:Name="progressBar"
+            Height="10"
+            Margin="6"
+            VerticalAlignment="Top"
+            IsIndeterminate="True"
+            Visibility="Collapsed" />
         
         <local:ColorPickerControl
             x:Name="colorPickerControl"
@@ -224,13 +217,5 @@
                 </Grid>
             </Grid>
         </Grid>
-
-        <ProgressBar
-            x:Name="progressBar"
-            Height="10"
-            Margin="6"
-            VerticalAlignment="Top"
-            IsIndeterminate="True"
-            Visibility="Collapsed" />
     </Grid>
 </Page>

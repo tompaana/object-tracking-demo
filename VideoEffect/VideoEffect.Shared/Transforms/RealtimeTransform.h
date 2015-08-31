@@ -7,6 +7,7 @@
 #include "RealtimeTransform_h.h"
 
 class AbstractEffect;
+class NoiseRemovalEffect;
 
 // CLSID of the MFT.
 DEFINE_GUID(CLSID_RealtimeTransformMFT,
@@ -40,15 +41,19 @@ protected: // From CAbstratEffect
     void OnMfMtSubtypeResolved(const GUID subtype);
 
 private: // New methods
+    ConvexHull *ExtractBestCircularConvexHull(
+        BYTE *pFrame, const D2D_RECT_U &targetRect,
+        int maxConvexHullCount, bool drawConvexHulls) const;
+
     void SetMode(const Mode& mode);
     void ClearTargetLock();
     void UpdateTargetLock(const ObjectDetails &objectDetails);
+    void DrawCrosshair(BYTE *pFrame, const ObjectDetails &objectDetails);
     void UpdateOperationTimeAverage(const UINT16 &millisecondsPerOperation);
 
 private: // Members
     AbstractEffect *m_effect;
-
-    D2D_RECT_U m_croppedProcessingArea;
+    NoiseRemovalEffect *m_noiseRemovalEffect;
 
     float m_itemX;
     float m_itemY;

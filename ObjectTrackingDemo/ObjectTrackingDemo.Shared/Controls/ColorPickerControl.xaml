@@ -54,13 +54,20 @@
                 ValueChanged="OnBrightnessSliderValueChanged" />            
         </Grid>
         
-        <AppBarButton
+        <Grid
             Margin="0"
             HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            Background="#aa000000"
-            Foreground="White"
-            Icon="Cancel"
-            Click="OnCloseButtonClicked" />
+            VerticalAlignment="Top">
+            <Grid.Background>
+                <SolidColorBrush Color="#80000000" />
+            </Grid.Background>
+            <AppBarButton
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#aa000000"
+                Foreground="White"
+                Icon="Cancel"
+                Click="OnCloseButtonClicked" />
+        </Grid>
     </Grid>
 </UserControl>

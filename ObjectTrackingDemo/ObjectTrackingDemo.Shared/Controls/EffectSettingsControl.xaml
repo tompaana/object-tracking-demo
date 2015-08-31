@@ -1,0 +1,46 @@
+﻿<UserControl
+    x:Name="thisControl"
+    x:Class="ObjectTrackingDemo.EffectSettingsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ObjectTrackingDemo"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="75"
+    d:DesignWidth="400">
+    
+    <Grid Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Button
+            x:Name="colorPickerButton"
+            Grid.Column="0"
+            Width="50"
+            Height="50"
+            VerticalAlignment="Center"
+            Content="">
+            <Button.Background>
+                <SolidColorBrush Color="{Binding ColorButtonColor, ElementName=thisControl}" />
+            </Button.Background>
+        </Button>
+        <StackPanel
+            Grid.Column="1"
+            Margin="36,0"
+            VerticalAlignment="Center">
+            <TextBlock
+                x:Name="thresholdTextBlock"
+                Margin="0,24,0,0"
+                Style="{ThemeResource BaseTextBlockStyle}"
+                Foreground="White"
+                Text="" />
+            <Slider
+                x:Name="thresholdSlider"
+                Margin="0,-12,0,0"
+                Minimum="0"
+                Maximum="128" />
+        </StackPanel>
+    </Grid>
+</UserControl>

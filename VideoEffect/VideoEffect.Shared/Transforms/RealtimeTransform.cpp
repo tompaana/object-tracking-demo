@@ -52,8 +52,8 @@ const int NumberOfOperationTimeMeasurementsNeededForAverage = 10;
 CRealtimeTransform::CRealtimeTransform() :
     CAbstractTransform(),
     m_effect(NULL),
+    m_noiseRemovalEffect(NULL),
 
-    m_croppedProcessingArea({ 0, 0, 0, 0 }),
     m_itemX(0),
     m_itemY(0),
     m_itemWidth(0),
@@ -79,6 +79,7 @@ CRealtimeTransform::~CRealtimeTransform()
     delete m_systemTime1;
     delete m_operationTimeMeasurementsInMilliseconds;
     delete m_effect;
+    delete m_noiseRemovalEffect;
 }
 
 // Initialize the instance.
@@ -174,6 +175,8 @@ HRESULT CRealtimeTransform::ProcessOutput(
             // Get the changed settings
             m_settings->m_threshold = m_messenger->Threshold();
             m_settings->setTargetYuv(m_messenger->TargetYuv());
+            m_settings->m_removeNoise = m_messenger->RemoveNoise();
+            m_settings->m_applyEffectOnly = m_messenger->ApplyEffectOnly();
             ClearTargetLock();
         }
 
@@ -268,16 +271,18 @@ HRESULT CRealtimeTransform::OnProcessOutput(IMFMediaBuffer *pIn, IMFMediaBuffer 
     }
 
     // Invoke the image transform function.
-    assert(m_effect != NULL);
+
+    GetSystemTime(m_systemTime0);
 
     if (m_messenger->State() == VideoEffectState::Idle
         || m_messenger->State() == VideoEffectState::Triggered
-        || m_messenger->State() == VideoEffectState::PostProcess)
+        || m_messenger->State() == VideoEffectState::PostProcess
+        || m_settings->m_mode == Mode::Passthrough)
     {
         // No transform - simply copy the frame
         UINT32 arrayLength = lDestStride * m_imageHeightInPixels;
 
-        if (m_effect->videoFormatSubtype() == MFVideoFormat_NV12)
+        if (m_videoFormatSubtype == MFVideoFormat_NV12)
         {
 #pragma warning(push)
 #pragma warning(disable: 4244)
@@ -286,101 +291,119 @@ HRESULT CRealtimeTransform::OnProcessOutput(IMFMediaBuffer *pIn, IMFMediaBuffer 
         }
 
         CopyMemory(pDest, pSrc, arrayLength);
+
+        if (m_settings->m_removeNoise && m_noiseRemovalEffect)
+        {
+            m_noiseRemovalEffect->apply(
+                m_rcDest,
+                pDest, lDestStride, pSrc, lSrcStride,
+                m_imageWidthInPixels, m_imageHeightInPixels);
+        }
     }
     else if (m_messenger->State() == VideoEffectState::Locking
-        || m_messenger->State() == VideoEffectState::Locked)
+             || m_messenger->State() == VideoEffectState::Locked)
     {
-        GetSystemTime(m_systemTime0);
+        BYTE *sourceFrame = pSrc;
+
+        if (m_settings->m_removeNoise && m_noiseRemovalEffect)
+        {
+            m_noiseRemovalEffect->apply(
+                m_rcDest,
+                pDest, lDestStride, sourceFrame, lSrcStride,
+                m_imageWidthInPixels, m_imageHeightInPixels);
+
+            sourceFrame = pDest;
+        }
 
         if (m_settings->m_mode == Mode::ChromaFilter)
         {
             dynamic_cast<ChromaFilterEffect*>(m_effect)->setDimmUnselectedPixels(m_targetLocked);
         }
 
-        // TODO: Using cropping seems to cause some weird problems, fix 'em!
         m_effect->apply(
-            /*m_targetLocked ? m_croppedProcessingArea :*/ m_rcDest,
-            pDest, lDestStride, pSrc, lSrcStride,
+            m_rcDest,
+            pDest, lDestStride, sourceFrame, lSrcStride,
             m_imageWidthInPixels, m_imageHeightInPixels);
 
         ObjectDetails objectDetails;
 
-        if (m_settings->m_mode == Mode::ChromaFilter)
-        {
-            objectDetails = dynamic_cast<ChromaFilterEffect*>(m_effect)->currentObject();
-        };
-
-        GetSystemTime(m_systemTime1);
-        UpdateOperationTimeAverage(m_systemTime1->wMilliseconds - m_systemTime0->wMilliseconds);
-
-        m_messenger->UpdateOperationDurationInMilliseconds(OperationTimeAverage());
-
-        if (objectDetails._width > 0)
+        if (!m_settings->m_applyEffectOnly)
         {
             if (m_targetLocked)
             {
                 if (m_targetWasJustLocked)
                 {
+                    if (m_settings->m_mode == Mode::ChromaFilter)
+                    {
+                        objectDetails = dynamic_cast<ChromaFilterEffect*>(m_effect)->currentObject();
+#pragma warning(push)
+#pragma warning(disable: 4244) 
+                        m_itemX = objectDetails._centerX;
+                        m_itemY = objectDetails._centerY;
+                        m_itemWidth = objectDetails._width;
+                        m_itemHeight = objectDetails._height;
+#pragma warning(pop)
+                    }
+
                     m_targetWasJustLocked = false;
                 }
+                else
+                {
+                    if (m_settings->m_mode == Mode::ChromaFilter)
+                    {
+                        objectDetails = dynamic_cast<ChromaFilterEffect*>(m_effect)->currentObject();
+                    }
+                }
 
-                UpdateTargetLock(objectDetails);
+                if (objectDetails._width > 0)
+                {
+                    UpdateTargetLock(objectDetails);
+                    DrawCrosshair(pDest, objectDetails);
+                }
+                else
+                {
+                    // No object detected, but state is locked -> trigger
+                    if (m_settings->m_mode == Mode::ChromaFilter)
+                    {
+                        m_messenger->SetState(VideoEffectState::Triggered);
+                    }
+
+                    ClearTargetLock();
+                }
             }
             else
             {
                 // Locking
-                ConvexHull* convexHull = m_imageAnalyzer->bestConvexHullDetails(pDest, m_imageWidthInPixels, m_imageHeightInPixels, 3, m_effect->videoFormatSubtype());
+                ConvexHull *convexHull = ExtractBestCircularConvexHull(pDest, m_rcDest, 3, true);
 
                 if (convexHull)
                 {
-                    if (m_imageAnalyzer->objectIsWithinConvexHullBounds(objectDetails, *convexHull))
-                    {
-                        // The following method, will change the state to Triggered, if enough
-                        // movement is detected
-                        UpdateTargetLock(objectDetails);
-                    }
-                    else
-                    {
-                        ClearTargetLock();
-                    }
+                    double radius = 0;
+                    D2D_POINT_2U circleCenter;
+                    m_imageAnalyzer->getMinimalEnclosingCircle(*convexHull, radius, circleCenter);
+                    
+                    objectDetails._centerX = circleCenter.x;
+                    objectDetails._centerY = circleCenter.y;
+                    objectDetails._width = (UINT32)(radius * 2);
+                    objectDetails._height = objectDetails._width;
+
+                    UpdateTargetLock(objectDetails);
 
                     delete convexHull;
+
+                    DrawCrosshair(pDest, objectDetails);
                 }
                 else
                 {
                     ClearTargetLock();
                 }
             }
-
-            // Draw crosshair
-            D2D1_POINT_2U point1 = { 0, objectDetails._centerY };
-            D2D1_POINT_2U point2 = { m_imageWidthInPixels, objectDetails._centerY };
-            m_imageProcessingUtils->drawLine(pDest, m_imageWidthInPixels, m_imageHeightInPixels, point1, point2, m_effect->videoFormatSubtype());
-
-            point1.x = point2.x = objectDetails._centerX;
-            point1.y = 0;
-            point2.y = m_imageHeightInPixels;
-            m_imageProcessingUtils->drawLine(pDest, m_imageWidthInPixels, m_imageHeightInPixels, point1, point2, m_effect->videoFormatSubtype());
-        }
-        else if (m_targetLocked)
-        {
-            // No object detected, but target was locked
-            if (m_targetWasJustLocked)
-            {
-                // Mystery bug workaround: Sometimes the item is lost just after locking and we
-                // don't want to do triggering, since nothing really happened
-                ClearTargetLock();
-                m_messenger->SetState(VideoEffectState::Locking);
-                m_targetWasJustLocked = false;
-            }
-            else
-            {
-                // No object detected, but state is locked -> trigger
-                m_messenger->SetState(VideoEffectState::Triggered);
-                ClearTargetLock();
-            }
         }
     }
+
+    GetSystemTime(m_systemTime1);
+    UpdateOperationTimeAverage(m_systemTime1->wMilliseconds - m_systemTime0->wMilliseconds);
+    m_messenger->UpdateOperationDurationInMilliseconds(OperationTimeAverage());
 
     // Set the data size on the output buffer.
     hr = pOut->SetCurrentLength(m_cbImageSize);
@@ -399,6 +422,7 @@ done:
 void CRealtimeTransform::OnMfMtSubtypeResolved(const GUID subtype)
 {
     CAbstractTransform::OnMfMtSubtypeResolved(subtype);
+    m_noiseRemovalEffect = new NoiseRemovalEffect(subtype);
 }
 
 
@@ -414,6 +438,23 @@ WORD CRealtimeTransform::OperationTimeAverage()
 
 
 //-------------------------------------------------------------------
+// ExtractBestCircularConvexHull
+//
+// Extracts convex hulls from the given frame and tries to determine
+// the best candidate to match the desired object.
+//
+// Note that the returned convex hull is owned by the caller.
+//-------------------------------------------------------------------
+ConvexHull *CRealtimeTransform::ExtractBestCircularConvexHull(
+    BYTE *pFrame, const D2D_RECT_U &targetRect, int maxConvexHullCount, bool drawConvexHulls) const
+{
+    return m_imageAnalyzer->extractBestCircularConvexHull(
+        pFrame, m_imageWidthInPixels, m_imageHeightInPixels, targetRect,
+        maxConvexHullCount, m_effect->videoFormatSubtype(), drawConvexHulls);
+}
+
+
+//-------------------------------------------------------------------
 // SetMode
 //
 //-------------------------------------------------------------------
@@ -422,21 +463,19 @@ void CRealtimeTransform::SetMode(const Mode& mode)
     m_settings->m_mode = mode;
     ClearTargetLock();
 
+    delete m_effect;
+    m_effect = NULL;
+
     switch (mode)
     {
     case Mode::ChromaDelta:
-        delete m_effect;
         m_effect = new ChromaDeltaEffect(m_videoFormatSubtype);
         break;
     case Mode::ChromaFilter:
-        delete m_effect;
         m_effect = new ChromaFilterEffect(m_videoFormatSubtype);
         break;
     case Mode::EdgeDetection:
-        delete m_effect;
         m_effect = new EdgeDetectionEffect(m_videoFormatSubtype);
-        break;
-    case Mode::GaussianFilter:
         break;
     }
 }
@@ -483,8 +522,7 @@ void CRealtimeTransform::UpdateTargetLock(const ObjectDetails &objectDetails)
             || abs(m_itemHeight - objectDetails._height) > maxJitterY)
         {
             // Jitter threshold exceeded, discard the current locking process and start over
-            m_targetLockIterations = 0;
-            m_targetLocked = false;
+            ClearTargetLock();
         }
         else
         {
@@ -518,11 +556,6 @@ void CRealtimeTransform::UpdateTargetLock(const ObjectDetails &objectDetails)
                 top = 0;
             }
             
-            m_croppedProcessingArea.left = left;
-            m_croppedProcessingArea.right = right;
-            m_croppedProcessingArea.top = top;
-            m_croppedProcessingArea.bottom = bottom;
-            
             m_rcDest.left = left;
             m_rcDest.right = right;
             m_rcDest.top = top;
@@ -552,6 +585,24 @@ void CRealtimeTransform::UpdateTargetLock(const ObjectDetails &objectDetails)
             }
         }
     }
+}
+
+
+//-------------------------------------------------------------------
+// DrawCrosshair
+//
+//
+//-------------------------------------------------------------------
+void CRealtimeTransform::DrawCrosshair(BYTE *pFrame, const ObjectDetails &objectDetails)
+{
+    D2D1_POINT_2U point1 = { 0, objectDetails._centerY };
+    D2D1_POINT_2U point2 = { m_imageWidthInPixels, objectDetails._centerY };
+    m_imageProcessingUtils->drawLine(pFrame, m_imageWidthInPixels, m_imageHeightInPixels, point1, point2, m_effect->videoFormatSubtype());
+
+    point1.x = point2.x = objectDetails._centerX;
+    point1.y = 0;
+    point2.y = m_imageHeightInPixels;
+    m_imageProcessingUtils->drawLine(pFrame, m_imageWidthInPixels, m_imageHeightInPixels, point1, point2, m_effect->videoFormatSubtype());
 }
 
 

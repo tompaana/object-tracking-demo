@@ -18,10 +18,10 @@ namespace ObjectTrackingDemo
 {
     public enum Mode
     {
-        ChromaFilter = 0,
-        EdgeDetection = 1,
-        ChromaDelta = 2,
-        //GaussianFilter = 3
+        Passthrough = 0,
+        ChromaFilter = 1,
+        EdgeDetection = 2,
+        ChromaDelta = 3
     };
 
     /// <summary>
@@ -42,7 +42,7 @@ namespace ObjectTrackingDemo
         private const uint PreviewFrameRate = 30;
 
 #if WINDOWS_PHONE_APP
-        private const uint MaximumVideoWidth = 1280;
+        private const uint MaximumVideoWidth = 800;
 #else
         private const uint MaximumVideoWidth = 1280;
 #endif
@@ -155,21 +155,6 @@ namespace ObjectTrackingDemo
                 if (IsTorchSupported)
                 {
                     _videoDeviceController.TorchControl.Enabled = value;
-                }
-            }
-        }
-
-        public Mode Mode
-        {
-            get
-            {
-                return (Mode)Messenger.ModeSetting;
-            }
-            set
-            {
-                if ((Mode)Messenger.ModeSetting != value)
-                {
-                    Messenger.ModeSetting = (int)value;
                 }
             }
         }
@@ -340,14 +325,6 @@ namespace ObjectTrackingDemo
 
             IsAutoExposureOn = true;
 
-            _yuv = new float[3]
-            {
-                128f, 128f, 128f
-            };
-
-            Messenger.ThresholdSetting = 0f;
-            Messenger.TargetYuvSetting = _yuv;
-
             Properties = new PropertySet();
             Properties[propertyKeyCommunication] = Messenger;           
 
@@ -476,10 +453,10 @@ namespace ObjectTrackingDemo
                 double factor = (double)(recordProfile.Video.FrameRate.Numerator) / (recordProfile.Video.FrameRate.Denominator * 4);
                 recordProfile.Video.Bitrate = (uint)(recordProfile.Video.Width * recordProfile.Video.Height * factor);
                 await MediaCapture.StartRecordToStreamAsync(recordProfile, _recordingStream);
-#else // WINDOWS_PHONE_APP
+#else
                 MediaEncodingProfile recordProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
                 await MediaCapture.StartRecordToStreamAsync(recordProfile, _recordingStream);
-#endif // WINDOWS_PHONE_APP
+#endif
 
                 // Get camera's resolution
                 VideoEncodingProperties resolution =
@@ -527,12 +504,8 @@ namespace ObjectTrackingDemo
         /// <param name="yuv">The new target YUV.</param>
         public void SetYuv(byte[] yuv)
         {
-            Messenger.TargetYuvSetting = new float[]
-                {
-                    (float)yuv[0],
-                    (float)yuv[1],
-                    (float)yuv[2]
-                };
+            App.Settings.TargetColor = ImageProcessingUtils.YuvToColor(yuv);
+            Messenger.SettingsChangedFlag = true;
         }
 
         /// <summary>
@@ -544,7 +517,8 @@ namespace ObjectTrackingDemo
         {
             if (Initialized && threshold >= MinimumThreshold && threshold <= MaximumThreshold)
             {
-                Messenger.ThresholdSetting = threshold;
+                App.Settings.Threshold = threshold;
+                Messenger.SettingsChangedFlag = true;
                 return true;
             }
 
@@ -700,7 +674,17 @@ namespace ObjectTrackingDemo
 
         public void OnModeChanged(object sender, Mode e)
         {
-            Messenger.ModeSetting = (int)e;
+            Messenger.ModeChangedFlag = true;
+        }
+
+        internal void OnRemoveNoiseChanged(object sender, bool e)
+        {
+            Messenger.SettingsChangedFlag = true;
+        }
+
+        internal void OnApplyEffectOnlyChanged(object sender, bool e)
+        {
+            Messenger.SettingsChangedFlag = true;
         }
 
         public async void OnIsoSettingsChangedAsync(object sender, IsoSpeedPreset e)

@@ -28,6 +28,7 @@ namespace ObjectTrackingDemo
         public event FrameCapturedDelegate FrameCaptured;
         public event PostProcessCompleteDelegate PostProcessComplete;
 
+        private Settings _settings = App.Settings;
         private StateManager _stateManager;
         private int _operationDurationInMilliseconds;
 
@@ -84,36 +85,6 @@ namespace ObjectTrackingDemo
             }
         }
 
-        private float _threshold;
-        public float ThresholdSetting
-        {
-            get
-            {
-
-                return _threshold;
-            }
-            set
-            {
-                _threshold = value;
-                SettingsChangedFlag = true;
-            }
-        }
-
-        private float[] _targetYuv;
-        public float[] TargetYuvSetting
-        {
-            get
-            {
-
-                return _targetYuv;
-            }
-            set
-            {
-                _targetYuv = value;
-                SettingsChangedFlag = true;
-            }
-        }
-
         private bool _modeChangedFlag;
         public bool ModeChangedFlag
         {
@@ -131,21 +102,6 @@ namespace ObjectTrackingDemo
             set
             {
                 _modeChangedFlag = value;
-            }
-        }
-
-        private int _mode;
-        public int ModeSetting
-        {
-            get
-            {
-
-                return _mode;
-            }
-            set
-            {
-                _mode = value;
-                ModeChangedFlag = true;
             }
         }
 
@@ -210,12 +166,22 @@ namespace ObjectTrackingDemo
 
         public float Threshold()
         {
-            return ThresholdSetting;
+            return (float)_settings.Threshold;
         }
 
         public float[] TargetYuv()
         {
-            return TargetYuvSetting;
+            return ImageProcessingUtils.ColorToYuv(_settings.TargetColor);
+        }
+
+        public bool RemoveNoise()
+        {
+            return _settings.RemoveNoise;
+        }
+
+        public bool ApplyEffectOnly()
+        {
+            return _settings.ApplyEffectOnly;
         }
 
         public bool IsModeChangedFlagRaised()
@@ -225,7 +191,7 @@ namespace ObjectTrackingDemo
 
         public int Mode()
         {
-            return ModeSetting;
+            return (int)_settings.Mode;
         }
 
         public int IsFrameRequested()

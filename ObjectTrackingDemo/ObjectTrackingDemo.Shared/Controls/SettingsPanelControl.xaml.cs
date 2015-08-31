@@ -23,10 +23,15 @@ namespace ObjectTrackingDemo
     public sealed partial class SettingsPanelControl : UserControl
     {
         public event EventHandler<Mode> ModeChanged;
+        public event EventHandler<bool> RemoveNoiseChanged;
+        public event EventHandler<bool> ApplyEffectOnlyChanged;
         public event EventHandler<IsoSpeedPreset> IsoChanged;
         public event EventHandler<int> ExposureChanged;
+        public event EventHandler<Visibility> VisibilityChanged;
 
+        private Settings _settings;
         private int _exposureStep = VideoEngine.ExposureAutoValue; // -1 == auto, 0 == min, 1..200 normal range
+        bool _isInitialized;
 
         public bool AreCameraSettingsVisible
         {
@@ -41,11 +46,43 @@ namespace ObjectTrackingDemo
         }
         private static readonly DependencyProperty AreCameraSettingsVisibleProperty =
             DependencyProperty.Register("AreCameraSettingsVisible", typeof(bool), typeof(SettingsPanelControl),
-                new PropertyMetadata(true));
+                new PropertyMetadata(true, OnAreCameraSettingsVisiblePropertyChanged));
+
+        private static void OnAreCameraSettingsVisiblePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            SettingsPanelControl control = d as SettingsPanelControl;
+
+            if (control != null)
+            {
+                Visibility visibility = (bool)e.NewValue ? Visibility.Visible : Visibility.Collapsed;
+                control.isoGrid.Visibility = visibility;
+                control.exposureGrid.Visibility = visibility;
+            }
+        }
 
         public SettingsPanelControl()
         {
             this.InitializeComponent();
+
+            _settings = App.Settings;
+
+            if (modeSelectorListBox.Items.Count == 0)
+            {
+                foreach (string enumAsString in Enum.GetNames(typeof(Mode)).ToList())
+                {
+                    modeSelectorListBox.Items.Add(enumAsString);
+                }
+
+                if (modeSelectorListBox.Items.Count > 0)
+                {
+                    modeSelectorListBox.SelectedIndex =
+                        modeSelectorListBox.Items.IndexOf(_settings.Mode.ToString());
+                }
+            }
+
+            removeNoiseCheckBox.IsChecked = _settings.RemoveNoise;
+            applyEffectOnlyCheckBox.IsChecked = _settings.ApplyEffectOnly;
+            _isInitialized = true;
         }
 
 #if WINDOWS_PHONE_APP
@@ -75,7 +112,7 @@ namespace ObjectTrackingDemo
                 if (modeSelectorListBox.Items.Count > 0)
                 {
                     modeSelectorListBox.SelectedIndex =
-                        modeSelectorListBox.Items.IndexOf(App.Settings.Mode.ToString());
+                        modeSelectorListBox.Items.IndexOf(_settings.Mode.ToString());
                 }
             }
 
@@ -90,7 +127,7 @@ namespace ObjectTrackingDemo
                     if (isoSelectorListBox.Items.Count == 0)
                     {
                         IReadOnlyList<IsoSpeedPreset> supportedIsoSpeedPresets =
-                            App.Settings.SupportedIsoSpeedPresets;
+                            _settings.SupportedIsoSpeedPresets;
 
                         if (supportedIsoSpeedPresets != null)
                         {
@@ -100,7 +137,7 @@ namespace ObjectTrackingDemo
                             }
 
                             isoSelectorListBox.SelectedIndex =
-                                isoSelectorListBox.Items.IndexOf(App.Settings.IsoSpeedPreset.ToString());
+                                isoSelectorListBox.Items.IndexOf(_settings.IsoSpeedPreset.ToString());
                         }
                     }
                 }
@@ -114,7 +151,7 @@ namespace ObjectTrackingDemo
                     exposureGrid.Visibility = Visibility.Visible;
                     exposureSlider.Minimum = videoEngine.ExposureMinStep;
                     exposureSlider.Maximum = videoEngine.ExposureMaxStep;
-                    _exposureStep = App.Settings.Exposure;
+                    _exposureStep = _settings.Exposure;
 
                     if (_exposureStep < videoEngine.ExposureMinStep || _exposureStep > videoEngine.ExposureMaxStep)
                     {
@@ -140,6 +177,11 @@ namespace ObjectTrackingDemo
 #if WINDOWS_PHONE_APP
             HardwareButtons.BackPressed += OnBackPressed;
 #endif
+
+            if (VisibilityChanged != null)
+            {
+                VisibilityChanged(this, Visibility.Visible);
+            }
         }
 
         public void Hide()
@@ -149,6 +191,11 @@ namespace ObjectTrackingDemo
 #if WINDOWS_PHONE_APP
             HardwareButtons.BackPressed -= OnBackPressed;
 #endif
+
+            if (VisibilityChanged != null)
+            {
+                VisibilityChanged(this, Visibility.Collapsed);
+            }
         }
 
         private void OnExposureChanged()
@@ -170,8 +217,8 @@ namespace ObjectTrackingDemo
                 exposureHeaderTextBlock.Text = "Exposure: " + _exposureStep.ToString();
             }
 
-            App.Settings.Exposure = _exposureStep;
-            App.Settings.Save();
+            _settings.Exposure = _exposureStep;
+            _settings.Save();
 
             if (ExposureChanged != null)
             {
@@ -183,12 +230,44 @@ namespace ObjectTrackingDemo
         {
             string selectedModeAsString = modeSelectorListBox.SelectedItem.ToString();
             Mode selectedMode = (Mode)Enum.Parse(typeof(Mode), selectedModeAsString);
-            App.Settings.Mode = selectedMode;
-            App.Settings.Save();
 
-            if (ModeChanged != null)
+            if (_isInitialized)
             {
-                ModeChanged(this, selectedMode);
+                _settings.Mode = selectedMode;
+                _settings.Save();
+
+                if (ModeChanged != null)
+                {
+                    ModeChanged(this, selectedMode);
+                }
+            }
+        }
+
+        private void OnRemoveNoiseCheckBoxCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_isInitialized)
+            {
+                _settings.RemoveNoise = (bool)removeNoiseCheckBox.IsChecked;
+                _settings.Save();
+
+                if (RemoveNoiseChanged != null)
+                {
+                    RemoveNoiseChanged(this, (bool)removeNoiseCheckBox.IsChecked);
+                }
+            }
+        }
+
+        private void OnApplyEffectOnlyCheckBoxCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_isInitialized)
+            {
+                _settings.ApplyEffectOnly = (bool)applyEffectOnlyCheckBox.IsChecked;
+                _settings.Save();
+
+                if (ApplyEffectOnlyChanged != null)
+                {
+                    ApplyEffectOnlyChanged(this, (bool)applyEffectOnlyCheckBox.IsChecked);
+                }
             }
         }
 
@@ -197,12 +276,16 @@ namespace ObjectTrackingDemo
             if (isoSelectorListBox.SelectedItem != null)
             {
                 string selectedIsoSpeedPresetAsString = isoSelectorListBox.SelectedItem.ToString();
-                App.Settings.IsoSpeedPreset = (IsoSpeedPreset)Enum.Parse(typeof(IsoSpeedPreset), selectedIsoSpeedPresetAsString);
-                App.Settings.Save();
 
-                if (IsoChanged != null)
+                if (_isInitialized)
                 {
-                    IsoChanged(this, App.Settings.IsoSpeedPreset);
+                    _settings.IsoSpeedPreset = (IsoSpeedPreset)Enum.Parse(typeof(IsoSpeedPreset), selectedIsoSpeedPresetAsString);
+                    _settings.Save();
+
+                    if (IsoChanged != null)
+                    {
+                        IsoChanged(this, _settings.IsoSpeedPreset);
+                    }
                 }
             }
         }

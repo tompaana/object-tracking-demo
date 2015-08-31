@@ -20,7 +20,9 @@ Settings* Settings::instance()
 
 Settings::Settings()
     : m_threshold(0),
-    m_mode(Mode::ChromaFilter)
+    m_mode(Mode::ChromaFilter),
+    m_removeNoise(false),
+    m_applyEffectOnly(false)
 {
     m_targetYuv[0] = 0;
     m_targetYuv[1] = 0;

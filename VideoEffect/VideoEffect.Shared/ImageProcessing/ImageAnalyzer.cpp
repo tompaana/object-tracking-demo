@@ -28,7 +28,7 @@ ImageAnalyzer::~ImageAnalyzer()
 // Extracts object details from the given, organized object map.
 //------------------------------------------------------------------
 std::vector<ObjectDetails*> ImageAnalyzer::extractObjectDetails(
-    const UINT16* organizedObjectMap, const UINT32& objectMapWidth, const UINT32& objectMapHeight, const UINT16& objectCount)
+    const UINT16* organizedObjectMap, const UINT32& objectMapWidth, const UINT32& objectMapHeight, const UINT16& objectCount) const
 {
     std::vector<ObjectDetails*> objectDetailsVector;
     UINT32* objectPixelCountOnXAxis = NULL;
@@ -96,7 +96,7 @@ std::vector<ObjectDetails*> ImageAnalyzer::extractObjectDetails(
 std::vector<UINT16>* ImageAnalyzer::resolveLargeObjectIds(
     const UINT16* organizedObjectMap,
     const UINT32& objectMapWidth, const UINT32& objectMapHeight,
-    UINT16& objectCount, const UINT32& minSize)
+    UINT16& objectCount, const UINT32& minSize) const
 {
     std::vector<ObjectDetails*> objectDetails =
         extractObjectDetails(organizedObjectMap, objectMapWidth, objectMapHeight, objectCount);
@@ -109,8 +109,7 @@ std::vector<UINT16>* ImageAnalyzer::resolveLargeObjectIds(
         ObjectDetails* currentObjectDetails = objectDetails.at(i);
 
         if (currentObjectDetails
-            && currentObjectDetails->_width >= minSize
-            /*&& currentObjectDetails->_height >= minSize*/)
+            && (currentObjectDetails->_width * currentObjectDetails->_height) >= minSize)
         {
             largeObjectIds->push_back(objectDetails.at(i)->_id);
         }
@@ -126,17 +125,17 @@ std::vector<UINT16>* ImageAnalyzer::resolveLargeObjectIds(
 // Returns a vector of newly allocated convex hulls.
 //------------------------------------------------------------------
 std::vector<ConvexHull*> ImageAnalyzer::extractConvexHullsOfLargestObjects(
-    BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight,
-    const UINT8& maxNumberOfConvexHulls, const GUID& videoFormatSubtype)
+    BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight, const D2D_RECT_U& targetRect,
+    const UINT8& maxNumberOfConvexHulls, const GUID& videoFormatSubtype) const
 {
     std::vector<ConvexHull*> convexHulls;
 
-    UINT16* objectMap = m_imageProcessingUtils->createObjectMap(binaryImage, imageWidth, imageHeight, videoFormatSubtype);
+    UINT16* objectMap = m_imageProcessingUtils->createObjectMap(binaryImage, imageWidth, imageHeight, targetRect, videoFormatSubtype);
 
     if (objectMap)
     {
         UINT16 objectCount = m_imageProcessingUtils->organizeObjectMap(objectMap, imageWidth * imageHeight);
-        UINT32 minSize = (UINT32)((float)imageWidth * RelativeObjectSizeThreshold);
+        UINT32 minSize = (UINT32)((float)imageWidth * (float)imageHeight * RelativeObjectSizeThreshold);
         std::vector<UINT16>* largeObjectIds = resolveLargeObjectIds(objectMap, imageWidth, imageHeight, objectCount, minSize);
         objectCount = largeObjectIds->size();
         std::vector<D2D_POINT_2U>* sortedPoints = NULL;
@@ -168,7 +167,7 @@ std::vector<ConvexHull*> ImageAnalyzer::extractConvexHullsOfLargestObjects(
 //
 //
 //------------------------------------------------------------------
-ConvexHull* ImageAnalyzer::convexHullClosestToCircle(const std::vector<ConvexHull*> &convexHulls, LONG &error)
+ConvexHull* ImageAnalyzer::convexHullClosestToCircle(const std::vector<ConvexHull*> &convexHulls, LONG &error) const
 {
     const UINT16 convexHullCount = convexHulls.size();
     ConvexHull* convexHull = NULL;
@@ -177,6 +176,7 @@ ConvexHull* ImageAnalyzer::convexHullClosestToCircle(const std::vector<ConvexHul
     D2D_POINT_2U center;
     LONG currentError = 0;
     error = -1;
+    double radius = 0;
     int bestIndex = -1;
 
     for (UINT16 i = 0; i < convexHullCount; ++i)
@@ -185,8 +185,8 @@ ConvexHull* ImageAnalyzer::convexHullClosestToCircle(const std::vector<ConvexHul
 
         if (convexHull)
         {
-            calculateConvexHullDimensions(*convexHull, width, height, center.x, center.y);
-            currentError = circleCircumferenceError(*convexHull, width, height, center);
+            getMinimalEnclosingCircle(*convexHull, radius, center);
+            currentError = circleCircumferenceError(*convexHull, radius, center);
 
             if (currentError < error || error < 0)
             {
@@ -198,10 +198,10 @@ ConvexHull* ImageAnalyzer::convexHullClosestToCircle(const std::vector<ConvexHul
 
     if (bestIndex >= 0)
     {
-        return convexHulls.at(bestIndex);
+        convexHull = convexHulls.at(bestIndex);
     }
 
-    return NULL;
+    return convexHull;
 }
 
 
@@ -212,7 +212,7 @@ ConvexHull* ImageAnalyzer::convexHullClosestToCircle(const std::vector<ConvexHul
 // convex hull.
 //------------------------------------------------------------------
 inline void ImageAnalyzer::calculateConvexHullDimensions(
-    const ConvexHull& convexHull, UINT32& width, UINT32& height, UINT32& centerX, UINT32& centerY)
+    const ConvexHull& convexHull, UINT32& width, UINT32& height, UINT32& centerX, UINT32& centerY) const
 {
     const UINT32 convexHullSize = convexHull.size();
 
@@ -262,13 +262,34 @@ inline void ImageAnalyzer::calculateConvexHullDimensions(
 //
 //
 //------------------------------------------------------------------
-ObjectDetails* ImageAnalyzer::convexHullDimensionsAsObjectDetails(const ConvexHull& convexHull)
+ObjectDetails* ImageAnalyzer::convexHullDimensionsAsObjectDetails(const ConvexHull& convexHull) const
 {
     ObjectDetails* objectDetails = new ObjectDetails();
 
     calculateConvexHullDimensions(convexHull,
         objectDetails->_width, objectDetails->_height,
         objectDetails->_centerX, objectDetails->_centerY);
+
+    return objectDetails;
+}
+
+
+//------------------------------------------------------------------
+// convexHullMinimalEnclosingCircleAsObjectDetails
+//
+//
+//------------------------------------------------------------------
+ObjectDetails* ImageAnalyzer::convexHullMinimalEnclosingCircleAsObjectDetails(const ConvexHull& convexHull) const
+{
+    double radius = 0;
+    D2D_POINT_2U circleCenter;
+    getMinimalEnclosingCircle(convexHull, radius, circleCenter);
+
+    ObjectDetails* objectDetails = new ObjectDetails();
+    objectDetails->_centerX = circleCenter.x;
+    objectDetails->_centerY = circleCenter.y;
+    objectDetails->_width = (UINT32)(radius * 2);
+    objectDetails->_height = objectDetails->_width;
 
     return objectDetails;
 }
@@ -287,26 +308,29 @@ ObjectDetails* ImageAnalyzer::convexHullDimensionsAsObjectDetails(const ConvexHu
 // visible).
 //------------------------------------------------------------------
 LONG ImageAnalyzer::circleCircumferenceError(
-    const ConvexHull& convexHull, const UINT32& convexHullWidth, const UINT32& convexHullHeight,
-    const D2D_POINT_2U& convexHullCenter)
+    const ConvexHull& convexHull, const double& radius, const D2D_POINT_2U& center) const
 {
-    UINT32 radius = (UINT32)round(((double)convexHullWidth + (double)convexHullHeight) / 4);
     D2D_POINT_2L pointOnPerfectCircleCircumference;
-    LONG pointError = -1;
-    LONG tempError = 0;
+    ConvexHull convexHullCopy = convexHull;
+    int indexOfSelectedPoint = -1;
+    double pointError = -1;
+    double tempError = 0;
     LONG totalError = 0;
-    const int convexHullPointCount = convexHull.size();
+    int currentConvexHullCopyPointCount = convexHullCopy.size();
+    double angleIncrement = TwoPi / (double)currentConvexHullCopyPointCount;
     D2D_POINT_2U currentPointInConvexHull;
-
-    for (double angle = 0; angle < TwoPi; angle += AngleIncrement)
+    const double normalizationCoefficient = radius * 2;
+    
+    for (double angle = 0; (angle < TwoPi && currentConvexHullCopyPointCount > 0); angle += angleIncrement)
     {
-        getPointOnCircumference(convexHullCenter, radius, angle, pointOnPerfectCircleCircumference);
+        getPointOnCircumference(center, radius, angle, pointOnPerfectCircleCircumference);
 
         pointError = -1;
 
-        for (int i = 0; i < convexHullPointCount; ++i)
+        // Find the point closest
+        for (int i = 0; i < currentConvexHullCopyPointCount; ++i)
         {
-            currentPointInConvexHull = convexHull.at(i);
+            currentPointInConvexHull = convexHullCopy.at(i);
 
             // Manhattan distance is faster than euclidean, and does not affect the
             // outcome since our scale of error is arbitrary.
@@ -314,23 +338,27 @@ LONG ImageAnalyzer::circleCircumferenceError(
                 abs((LONG)currentPointInConvexHull.x - pointOnPerfectCircleCircumference.x)
                 + abs((LONG)currentPointInConvexHull.y - pointOnPerfectCircleCircumference.y);
 
-            tempError /= (convexHullWidth + convexHullHeight) / 2; // Normalize
-
-            if (convexHullHeight != 0)
-            {
-                tempError *= (convexHullWidth / convexHullHeight);
-            }
+            tempError /= normalizationCoefficient; // Normalize
 
             if (pointError < tempError || pointError < 0)
             {
                 pointError = tempError;
+                indexOfSelectedPoint = i;
             }
         }
 
-        totalError += pointError;
+        if (indexOfSelectedPoint >= 0)
+        {
+            // Remove the used, selected point
+            convexHullCopy.erase(convexHullCopy.begin() + indexOfSelectedPoint);
+            indexOfSelectedPoint = -1;
+            currentConvexHullCopyPointCount = convexHullCopy.size();
+        }
+
+        totalError += (LONG)pointError;
     }
 
-    return totalError;
+    return totalError / convexHull.size();
 }
 
 
@@ -342,78 +370,119 @@ LONG ImageAnalyzer::circleCircumferenceError(
 // The calculated error is the difference between the perfect and
 // the measured area as an absolute value.
 //------------------------------------------------------------------
-double ImageAnalyzer::circleAreaError(UINT32 measuredDiameter, UINT32 measuredArea)
+double ImageAnalyzer::circleAreaError(UINT32 measuredDiameter, UINT32 measuredArea) const
 {
     float radius = static_cast<float>(measuredDiameter) / 2;
     return abs(measuredArea - Pi *  radius * radius);
 }
 
 
+
 //-------------------------------------------------------------------
-// bestConvexHullDetails
+// extractBestCircularConvexHull
 //
-//
+// Finds the convex hull closest to a circle shape from the given
+// set of convex hull. The others are deleted so note that the list
+// is unusable after calling this method.
 //-------------------------------------------------------------------
-ConvexHull* ImageAnalyzer::bestConvexHullDetails(
-    BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight, const UINT8& maxCandidates, const GUID& videoFormatSubtype)
+ConvexHull* ImageAnalyzer::extractBestCircularConvexHull(std::vector<ConvexHull*>& convexHulls) const
 {
-    std::vector<ConvexHull*> convexHulls =
-        extractConvexHullsOfLargestObjects(binaryImage, imageWidth, imageHeight, maxCandidates, videoFormatSubtype);
+    ConvexHull* convexHull = NULL;
 
     if (convexHulls.size() > 0)
     {
-        std::vector<D2D_POINT_2U>* convexHull = NULL;
         LONG error = 0;
 
-        for (UINT16 i = 0; i < convexHulls.size(); ++i)
-        {
-            convexHull = convexHulls.at(i);
-
-            for (UINT32 i = 0; i < convexHull->size() - 1; ++i)
-            {
-                m_imageProcessingUtils->drawLine(
-                    binaryImage, imageWidth, imageHeight,
-                    convexHull->at(i), convexHull->at(i + 1), videoFormatSubtype, 3, 0x80, 0x60, 0xff);
-            }
-        }
-
         convexHull = convexHullClosestToCircle(convexHulls, error);
-
+       
         if (convexHull)
         {
-            for (UINT32 i = 0; i < convexHull->size() - 1; ++i)
-            {
-                m_imageProcessingUtils->drawLine(
-                    binaryImage, imageWidth, imageHeight,
-                    convexHull->at(i), convexHull->at(i + 1), videoFormatSubtype, 3, 0x80, 0x10, 0x10);
-            }
-
-            // Delete other convex hulls
+            // Remove the selected convexhull
             for (UINT16 i = 0; i < convexHulls.size(); ++i)
             {
-                if (convexHulls.at(i) != convexHull)
+                if (convexHulls.at(i) == convexHull)
                 {
-                    delete convexHulls.at(i);
                     convexHulls[i] = NULL;
+                    break;
                 }
-            }
-
-            return convexHull;
+            }  
         }
 
         DeletePointerVector(convexHulls);
     }
 
-    return NULL;
+    return convexHull;
 }
 
 
 //-------------------------------------------------------------------
-// objectIsWithinConvexHullBounds
+// extractBestCircularConvexHull
+//
+// Extracts convex hulls from the given frame and tries to determine
+// the best candidate to match the desired (circular) object.
+//
+// Note that the returned convex hull is owned by the caller.
+//-------------------------------------------------------------------
+ConvexHull* ImageAnalyzer::extractBestCircularConvexHull(
+    BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight, const D2D_RECT_U& targetRect,
+    const UINT8& maxCandidates, const GUID& videoFormatSubtype, bool drawConvexHulls) const
+{
+    std::vector<ConvexHull*> convexHulls =
+        extractConvexHullsOfLargestObjects(binaryImage, imageWidth, imageHeight, targetRect, maxCandidates, videoFormatSubtype);
+
+    if (drawConvexHulls)
+    {
+#pragma warning(push)
+#pragma warning(disable: 4018) 
+        for (int i = 0; i < convexHulls.size(); ++i)
+        {
+            m_imageProcessingUtils->visualizeConvexHull(
+                binaryImage, imageWidth, imageHeight,
+                *convexHulls.at(i), videoFormatSubtype, 4, 0x4c, 0x54, 0xff);
+        }
+#pragma warning(pop)
+    }
+
+    ConvexHull* convexHull = extractBestCircularConvexHull(convexHulls);
+
+    if (convexHull && drawConvexHulls)
+    {
+        m_imageProcessingUtils->visualizeConvexHull(
+            binaryImage, imageWidth, imageHeight,
+            *convexHull, videoFormatSubtype, 4, 0xff, 0x0, 0x0);
+    }
+
+    return convexHull;
+}
+
+
+//-------------------------------------------------------------------
+// extractBestCircularConvexHull
+//
+// For convenience.
+//-------------------------------------------------------------------
+ConvexHull* ImageAnalyzer::extractBestCircularConvexHull(
+    BYTE* binaryImage, const UINT32& imageWidth, const UINT32& imageHeight,
+    const UINT8& maxCandidates, const GUID& videoFormatSubtype, bool drawConvexHulls) const
+{
+    D2D_RECT_U targetRect;
+    targetRect.left = 0;
+    targetRect.right = imageWidth;
+    targetRect.top = 0;
+    targetRect.bottom = imageHeight;
+
+    return extractBestCircularConvexHull(
+        binaryImage, imageWidth, imageHeight, targetRect,
+        maxCandidates, videoFormatSubtype, drawConvexHulls);
+}
+
+
+//-------------------------------------------------------------------
+// objectCenterIsWithinConvexHullBounds
 //
 //
 //-------------------------------------------------------------------
-bool ImageAnalyzer::objectIsWithinConvexHullBounds(const ObjectDetails& objectDetails, const ConvexHull& convexHull)
+bool ImageAnalyzer::objectCenterIsWithinConvexHullBounds(const ObjectDetails& objectDetails, const ConvexHull& convexHull) const
 {
     ObjectDetails* convexHullObjectDetails = convexHullDimensionsAsObjectDetails(convexHull);
 
@@ -432,17 +501,65 @@ bool ImageAnalyzer::objectIsWithinConvexHullBounds(const ObjectDetails& objectDe
 
 
 //------------------------------------------------------------------
+// getMinimalEnclosingCircle
+//
+// Calculates the minimal enclosing circle for the given convex
+// hull.
+//------------------------------------------------------------------
+void ImageAnalyzer::getMinimalEnclosingCircle(
+    const ConvexHull& convexHull, double& radius, D2D_POINT_2U& circleCenter) const
+{
+    // Find the verteces most distant
+    const int convexHullSize = convexHull.size();
+    D2D_POINT_2U currentPoint1;
+    D2D_POINT_2U currentPoint2;
+    double currentDistance = 0;
+    double greatestDistance = 0;
+    int vertexIndex1 = -1;
+    int vertexIndex2 = -1;
+
+    for (int i = 0; i < convexHullSize - 1; ++i)
+    {
+        for (int j = i + 1; j < convexHullSize; ++j)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+
+            currentPoint1 = convexHull.at(i);
+            currentPoint2 = convexHull.at(j);
+            currentDistance = sqrt(
+                pow(abs((double)currentPoint1.x - (double)currentPoint2.x), 2)
+                + pow(abs((double)currentPoint1.y - (double)currentPoint2.y), 2));
+
+            if (currentDistance > greatestDistance)
+            {
+                greatestDistance = currentDistance;
+                vertexIndex1 = i;
+                vertexIndex2 = j;
+            }
+        }
+    }
+
+    radius = greatestDistance / 2;
+    circleCenter.x = (convexHull.at(vertexIndex1).x + convexHull.at(vertexIndex2).x) / 2;
+    circleCenter.y = (convexHull.at(vertexIndex1).y+ convexHull.at(vertexIndex2).y) / 2;
+}
+
+
+//------------------------------------------------------------------
 // getPointOnCircumference
 //
 // Calculates a point on circle's circumference based on the given
 // center, radius and angle.
 //------------------------------------------------------------------
-void ImageAnalyzer::getPointOnCircumference(const D2D_POINT_2U& center, const UINT32& radius, const double& angle, D2D_POINT_2L& point)
+void ImageAnalyzer::getPointOnCircumference(const D2D_POINT_2U& center, const double& radius, const double& angle, D2D_POINT_2L& point) const
 {
 #pragma warning(push)
 #pragma warning(disable: 4244) 
-    point.x = center.x + (LONG)radius * cos(angle);
-    point.y = center.y + (LONG)radius * sin(angle);
+    point.x = center.x + radius * cos(angle);
+    point.y = center.y + radius * sin(angle);
 #pragma warning(pop)
 }
 
@@ -452,7 +569,7 @@ void ImageAnalyzer::getPointOnCircumference(const D2D_POINT_2U& center, const UI
 //
 // 
 //------------------------------------------------------------------
-void ImageAnalyzer::sortObjectDetailsBySize(std::vector<ObjectDetails*> &objectDetails)
+void ImageAnalyzer::sortObjectDetailsBySize(std::vector<ObjectDetails*> &objectDetails) const
 {
     std::sort(objectDetails.begin(), objectDetails.end(),
         [](ObjectDetails *a, ObjectDetails *b)

@@ -152,8 +152,10 @@ void EdgeDetectionEffect::applyYUY2(
 
                 if (newY0 == SelectedPixelValue)
                 {
-                    u0 = 0x0;
-                    v0 = 0x0;
+                    //u0 = 0x0;
+                    //v0 = 0x0;
+                    u0 = 0x80;
+                    v0 = 0x80;
                 }
                 else
                 {
@@ -310,8 +312,10 @@ void EdgeDetectionEffect::applyNV12(
 
             if (newY0 == SelectedPixelValue)
             {
-                pDest[x] = 0x0;
-                pDest[x + 1] = 0x0;
+                pDest[x] = 0x80;
+                pDest[x + 1] = 0x80;
+                //pDest[x] = 0x0;
+                //pDest[x + 1] = 0x0;
             }
             else
             {
